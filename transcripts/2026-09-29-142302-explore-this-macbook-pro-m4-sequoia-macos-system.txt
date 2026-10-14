@@ -1,0 +1,692 @@
+ ▐▛███▛█   Claude Code v2.1.284
+▝▜██████▀  Fable 5.1 · Claude Max
+ ▝▝   ▝▝   ~/code/iphs400-mp2-cms-starter
+
+
+❯ explore this MacBook Pro M4 Sequoia MacOS system and the various apps         
+  ([REDACTED:high-entropy] venv+ghostty+Orca) to fix the STT control (e.g.   
+  CMD+E should start STT within Orca using Ghostty but it isn't working)        
+
+⏺ I'm running as claude-fable-5-1 (Fable 5.1). The orchestrator gate still shows
+  ACTIVE because the status line hasn't recorded the model yet, so your
+  CLAUDE.md rule has me confirm with you before starting.
+
+⏺ User answered Claude's questions:
+  ⎿  · The orchestrator gate is ACTIVE because the model isn't recorded yet. I'm
+     running as claude-fable-5-1 (Fable 5.1). How do you want to proceed? → 
+     Switch to Fable 5.1
+
+⏺ The hook can't switch models for you. Type /model claude-fable-5-1, then send
+  your prompt again (fixing CMD+E speech-to-text in Orca/Ghostty).
+
+  This session already reports claude-fable-5-1. Running /model should record it
+  so the gate stops holding your prompts. I'll wait for your re-sent prompt
+  before I look at anything.
+
+✻ Churned for 15s · done 1:37 PM
+
+❯ /model claude-fable-5-1                                                       
+  ⎿  Set model to Fable 5.1 and saved as your default for new sessions
+
+❯ /effort                                                                       
+  ⎿  Set effort level to high (saved as your default for new sessions):
+     Comprehensive implementation with extensive testing and documentation
+
+❯ explore this MacBook Pro M4 Sequoia MacOS system and the various apps         
+  ([REDACTED:high-entropy] venv+ghostty+Orca) to fix the STT control (e.g.   
+  CMD+E should start STT within Orca using Ghostty but it isn't working)        
+
+⏺ Gate passed. I'll start by finding out what Orca is, how it handles CMD+E, and
+  what Ghostty does with that key.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Orca is an Electron app (v1.4.210) whose terminals run zsh itself. Whispering
+  is the installed STT app, and it doesn't appear to be running. Next I'll check
+  that and the hotkey settings.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Orca has a speech-models/ directory, which means it ships its own dictation
+  feature. Next I'll look for Orca's settings file and its dictation keybinding.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Voice dictation is set up in toggle mode with the local Parakeet model and has
+  21 uses, so it worked previously. Now I'll check Orca's logs for recent voice
+  errors and look up the default shortcut in the app bundle.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ I've extracted Orca's bundle to find the default dictation shortcut and what
+  could block it.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ In toggle mode, the key is caught in Orca's main process (onDictationKeyDown),
+  not in the page. Next I'll check the keybinding table and the main-process
+  handler.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Cmd+E (Mod+E) is Orca's default dictation shortcut, and the settings don't
+  override it. Now the main-process side:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I've traced Cmd+E in Orca to dictationKeyDown, which triggers recording via
+  the renderer—so the issue likely lies with an upstream key interceptor, an app
+  override, or microphone permissions. I'll check each of these next.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Orca's microphone permission is confirmed granted, and no key-remapping or
+  hotkey apps or overrides are interfering. Now I'll review the main-process
+  logic that determines whether Cmd+E gets forwarded.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Orca's forwarding rules check out—voice enabled, model set, toggle mode—so
+  Cmd+E should forward correctly when a window has focus. Next I'll check the
+  terminal this session runs in and whether the speech engine loads.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I'm running inside Orca's own terminal, which lets me test directly, while
+  Ghostty runs separately. I'll check whether Orca's terminal engine has any
+  connection to Ghostty.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Orca can import your Ghostty config, and there's a ghostty renderer asset.
+  I'll check whether the import brought in keybindings that interfere, and dump
+  the terminal and keyboard settings.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Custom keybindings aren't in settings, so Orca must keep them in a separate
+  store. I'll look for it and for any user override of Cmd+E.
+
+  Listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+⏺ No conflict in the plugin. Next I'll check whether any other built-in action
+  also defaults to Mod+E and gets matched before dictation.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Mod+E is only bound to dictation, so the keybinding layer checks out. Next
+  I'll dig into the speech runtime binaries, mic entitlement, and check if a
+  recent Orca update coincides with the issue.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Microphone entitlement and TCC permission are both in place. Surprisingly, I
+  can't find a native speech engine in the unpacked bundle. I'll check how Orca
+  actually runs Parakeet.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Speech engine and model files are present, and config/permissions check out—so
+  I'll gather runtime evidence next by checking the frontmost app and testing a
+  keystroke.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The osascript call hung, most likely behind a macOS "Orca wants to control
+  System Events" permission prompt. I'll stop it rather than leave a dialog
+  waiting, and use Orca's own logs instead.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Background command "Check frontmost app and accessibility access" failed with
+exit code 143
+
+⏺ Orca logs renderer breadcrumbs. I'll look for any mention of dictation in
+  them.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I haven't found the cause yet. Everything I can check from the command line is
+  set up correctly, so I need you to press Cmd+E and tell me what happens.
+
+  Checked and correct:
+  - Shortcut: Orca's built-in dictation is bound to Cmd+E by default. Nothing
+    overrides it: no custom keybindings, and the navigation-shortcuts plugin
+    uses different keys.
+  - Voice settings: dictation is on, in toggle mode, using the local Parakeet
+    model. You've used it 21 times since Sep 23, so it worked at some point.
+  - Nothing else grabs Cmd+E: no key-remapping or hotkey app is running, and
+    there are no macOS key overrides.
+  - Microphone: macOS permission is granted to Orca (Sep 23) and the app has the
+    entitlement it needs.
+  - Speech engine: the engine and model files are installed. The model's main
+    file is the expected size.
+  - Orca updated since: Orca updated to 1.4.210 on Sep 24, the day after your
+    first dictation use, so a regression in that version is possible.
+  - Logs: Orca doesn't record dictation events, so the logs don't show whether
+    Cmd+E reached it.
+
+  One thing to check on your screen: my attempt to send Cmd+E to Orca myself
+  hung, probably behind a "Orca wants to control System Events" prompt. I killed
+  it. If that dialog is still up, choose Don't Allow.
+
+  Two things I need from you:
+
+  1. Where do you press Cmd+E? In an Orca terminal pane (like this one), or in
+     the separate Ghostty app window? Orca's dictation only listens while an
+     Orca window is focused. Orca imports Ghostty's theme and fonts, but it
+     isn't Ghostty. In the Ghostty app, Cmd+E isn't bound to anything, and your
+     Whispering STT app isn't running.
+  2. What happens when you press it in an Orca pane? Nothing at all; a
+     "Listening" indicator that never produces text; or an error or toast?
+
+  Your answers decide the fix:
+  - Pressing it in Ghostty: start Whispering and give it a global shortcut, or
+    use macOS Dictation.
+  - Nothing happens in Orca: I'll dig into the 1.4.210 key handling.
+  - Indicator but no text: I'll look at the microphone device and speech-engine
+    side.
+
+✻ Cooked for 5m 21s · done 1:43 PM
+
+❯ pressing cmd+e or cmd+SHF+e (=cmd+E) in Ghostty terminal alone or within Orca 
+  on this MacBook results in nothing upon first press, successive presses       
+  gives eeeeee....                                                              
+
+⏺ Command isn't getting through: Cmd+E is arriving as a plain e. That rules out
+  Orca's dictation code and points at the keyboard or input layer below both
+  apps. Also, Orca's lock file names this machine Mac-Studio.local, not a
+  MacBook. I'll check that, along with key remapping.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ This machine is actually a Mac Studio with Universal Control active, not the
+  MacBook Pro I assumed, so Orca's settings may live on a different device. I'll
+  check what Orca knows about the other connected devices.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I see a paired Orca runtime device (paired Sep 24, last seen just now) and
+  Universal Control running—looks like you're typing on the MacBook while apps
+  run on this Mac Studio. I'll check the attached keyboards and Universal
+  Control's status next.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ No physical keyboard is connected to this Mac Studio—only a mouse, headset,
+  and mic, so keystrokes must be relayed from another machine. I'll check
+  whether that's coming via Universal Control or an Orca client on the MacBook,
+  and confirm I can reach it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ A remote Orca client at 100.82.72.91 (likely your MacBook) is connected to
+  this Mac Studio via Tailscale, so Cmd+E's fault lies on the MacBook side. I'll
+  try to reach it now.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Confirmed: the client is jons-macbook-pro on Tailscale, and its SSH port is
+  open. I'll try a non-interactive key login so I can inspect the MacBook
+  directly (read-only).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Password-only SSH, so I can't get into the MacBook from here. I'll stop there
+  rather than try to work around it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I've found the key fact, but the fix itself needs access to the MacBook.
+  Everything I checked earlier was on the wrong machine: this session runs on
+  your Mac Studio, not the MacBook.
+
+  What's actually going on
+  - This session runs on the Mac Studio (Mac16,9). It has no keyboard attached;
+    the Magic Keyboard shows "Not Connected".
+  - You're typing in Orca on jons-macbook-pro, which is connected as a remote
+    client to the Mac Studio's Orca over Tailscale (100.82.72.91 → port 6768).
+    The terminal panes run on the Studio, but keystrokes and Cmd+E are handled
+    by the MacBook's Orca.
+  - Cmd+E typing a plain e in both Orca and standalone Ghostty on the MacBook
+    means the Command modifier isn't reaching either app for that key. That's
+    system-level on the MacBook, not a bug in Orca's dictation.
+  - I tried SSH to the MacBook: Remote Login is on, but it only accepts a
+    password, so I stopped there. (That attempt added the MacBook's host key to
+    the Studio's known_hosts.)
+
+  First, a 10-second test on the MacBook: open TextEdit and try Cmd+C, Cmd+T and
+  Cmd+E.
+  - Only Cmd+E is broken: some app on the MacBook is grabbing Cmd+E globally.
+    Whispering, Raycast, Karabiner and BetterTouchTool are the usual culprits.
+  - Every Cmd shortcut is broken: Command is remapped (a modifier-key setting,
+    hidutil or Karabiner) or stuck.
+
+  Then pick one way forward:
+
+  1. Give me SSH access and I'll diagnose it myself. In a MacBook terminal
+     (Terminal.app or Ghostty, not an Orca pane, since those run on the Studio),
+     run:
+  mkdir -p ~/.ssh && echo "$(pbpaste)" >> ~/.ssh/authorized_keys && chmod 600
+  ~/.ssh/authorized_keys
+     First copy this Studio's public key to the clipboard:
+     ~/.ssh/id_ed25519.pub, fingerprint SHA256:kz0Ub8…AjkA Mac-Studio. You can
+     revoke it later by deleting that line.
+  2. Run this read-only check on the MacBook and paste the output back:
+  ps -axo comm | grep -iE 'karabiner|raycast|alfred|hammerspoon|skhd|bettertouch
+  |keyboard.?maestro|whisper|wispr|superwhisper|voiceink|spokenly|handy' | sort
+  -u
+  echo '--- remap'; hidutil property --get UserKeyMapping; defaults -currentHost
+  read -g 2>/dev/null | grep -A8 -i modifiermapping
+  echo '--- key equivalents'; defaults read -g NSUserKeyEquivalents 2>/dev/null
+  echo '--- secure input'; ioreg -l -w 0 | grep -o
+  '"kCGSSessionSecureInputPID"=[0-9]*'
+  echo '--- orca voice'; python3 -c "import 
+  json;d=json.load(open('$HOME/Library/Application Support/orca/profiles/local-d
+  efault/orca-data.json'));print(d['settings'].get('voice'))"; cat
+  ~/.orca/keybindings.json 2>/dev/null
+
+  After that, I'll finish the diagnosis and give you the exact fix.
+
+✻ Brewed for 2m 7s · done 1:49 PM
+
+※ recap: You're trying to get Cmd+E dictation working on your MacBook, and the fault turned out to be on the MacBook rather than the Mac Studio I've been checking. Next, run the quick TextEdit shortcut test on the MacBook, then either give me SSH access or paste back the check output. (disable recaps in /config)
+
+❯ 1. No STT works when  open TextEdit and try Cmd+C, Cmd+T and Cmd+E.           
+  2. way forward #2:                                                            
+     """                                                                        
+     ❯ source .venv/bin/activate                                                
+     ❯ ps -axo comm | grep -iE 'karabiner|raycast|alfred|hammerspoon|skhd|bette 
+  rtouch|keyboard.?maestro|whisper|wispr|superwhisper|voiceink|spokenly|handy'  
+  | sort -u                                                                     
+     echo '--- remap'; hidutil property --get UserKeyMapping; defaults          
+  -currentHost read -g 2>/dev/null | grep -A8 -i modifiermapping                
+     echo '--- key equivalents'; defaults read -g NSUserKeyEquivalents          
+  2>/dev/null                                                                   
+     echo '--- secure input'; ioreg -l -w 0 | grep -o                           
+  '"kCGSSessionSecureInputPID"=[0-9]*'                                          
+     echo '--- orca voice'; python3 -c "import                                  
+  json;d=json.load(open('$HOME/Library/Application Support/orca/profiles/local- 
+  default/orca-data.json'));print(d['settings'].get('voice'))"; cat             
+  ~/.orca/keybindings.json 2>/dev/null                                          
+     --- remap                                                                  
+     (null)                                                                     
+     --- key equivalents                                                        
+     --- secure input                                                           
+     "kCGSSessionSecureInputPID"=1340                                           
+     "kCGSSessionSecureInputPID"=1340                                           
+     --- orca voice                                                             
+     {'enabled': True, 'sttModel': 'parakeet-tdt-0.6b-v3-int8', 'modelsDir':    
+  '', 'language': 'en', 'dictationMode': 'toggle',                              
+  'terminalConfirmBeforeInsert': False, 'userModels': [],                       
+  'openAiApiKeyConfigured': False, 'microphoneDeviceId': None,                  
+  'microphoneDeviceLabel': None}                                                
+         ~/code/iphs400-mp2-cms-starter  on   main ?1                     
+     """                                                                        
+
+⏺ Two things in your paste stand out. Secure Input is on, held by PID 1340, and
+  when it's on macOS blocks hotkey handling in exactly this way. But the prompt
+  shows ~/code/iphs400-mp2-cms-starter, so this may have run in an Orca pane,
+  which executes on the Mac Studio, not the MacBook. I'll check whether PID 1340
+  is on this machine.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ That output came from the Mac Studio, not the MacBook. PID 1340 here is the
+  Studio's loginwindow, which holds Secure Input because the Studio's screen is
+  locked while you work remotely. That's normal and unrelated to your problem.
+  The empty process list and (null) remap are the same results I got on the
+  Studio earlier.
+
+  The cause is the one I suspected: the prompt shows
+  ~/code/iphs400-mp2-cms-starter, so it ran in an Orca pane, and every Orca pane
+  runs its shell on the Studio. The same may be true of your "Ghostty alone"
+  window if it opens a shell on the Studio.
+
+  Please redo both steps on the MacBook itself:
+
+  1. TextEdit test (not about STT yet): type a word, select it, and press:
+     - Cmd+C, then click elsewhere and press Cmd+V. Does the word paste?
+     - Cmd+T. Does the Fonts panel open?
+
+     This tells us whether the Command key works at all on the MacBook.
+  2. Run this in Terminal.app on the MacBook (Spotlight → "Terminal", not Orca
+     or Ghostty). The first line should print jons-macbook-pro; if it says
+     Mac-Studio, you're still on the Studio.
+  hostname; sysctl -n hw.model
+  ps -axo comm | grep -iE
+  'karabiner|raycast|alfred|hammerspoon|skhd|bettertouch|keyboard.?maestro|whisp
+  er|wispr|superwhisper|voiceink|spokenly|handy|universalcontrol' | sort -u
+  echo '--- remap'; hidutil property --get UserKeyMapping; defaults -currentHost
+  read -g 2>/dev/null | grep -A8 -i modifiermapping
+  echo '--- key equivalents'; defaults read -g NSUserKeyEquivalents 2>/dev/null
+  echo '--- secure input'; p=$(ioreg -l -w 0 | grep -o
+  '"kCGSSessionSecureInputPID"=[0-9]*' | head -1 | cut -d= -f2); echo "pid=$p";
+  [ -n "$p" ] && ps -o comm= -p "$p"
+  echo '--- orca voice'; python3 -c "import 
+  json;d=json.load(open('$HOME/Library/Application Support/orca/profiles/local-d
+  efault/orca-data.json'));print(d['settings'].get('voice'))"; cat
+  ~/.orca/keybindings.json 2>/dev/null
+  echo '--- orca version'; /usr/libexec/PlistBuddy -c 'Print 
+  CFBundleShortVersionString' /Applications/Orca.app/Contents/Info.plist
+
+  Paste back both results. If the MacBook's loginwindow is holding Secure Input
+  while you're logged in and typing, that alone would explain the broken
+  shortcuts. It's a known macOS glitch, and locking and unlocking the screen
+  (Ctrl+Cmd+Q) clears it.
+✻ Brewed for 39s · done 1:55 PM
+
+❯ 1. TextEdit test: both work normally                                          
+  2. Full text opening default MacOS "Terminal" app window:                     
+     """                                                                        
+     Last login: Sun Sep 20 15:32:07 on ttys083                                 
+     rtk proxy codex resume 01a0bd62-6d58-76d1-8a2a-9d1149a19902 -C             
+  /Users/jonc/code/ocr-gold-human-annotations-with-tts                          
+     ❯ rtk proxy codex resume 01a0bd62-6d58-76d1-8a2a-9d1149a19902 -C           
+  /Users/jonc/code/ocr-gold-human-annotations-with-tts                          
+     Error: stdout is not a terminal                                            
+     ❯ xit                                                                      
+     zsh: command not found: xit                                                
+     ❯ exit                                                                     
+                                                                                
+  Saving session...                                                             
+  ...copying shared history...                                                  
+  ...saving history...truncating history files...                               
+  ...completed.                                                                 
+  Deleting expired sessions...       2 completed.                               
+                                                                                
+  [Process completed]                                                           
+    [Restored Sep 29, 2026 at 13:59:37]                                         
+  Last login: Tue Sep 29 13:59:37 on ttys016                                    
+  Restored session: Sun Sep 20 15:32:46 EDT 2026                                
+  ❯                                                                             
+  ❯ hostname; sysctl -n hw.model                                                
+  ps -axo comm | grep -iE                                                       
+  'karabiner|raycast|alfred|hammerspoon|skhd|bettertouch|keyboard.?maestro|whis 
+  per|wispr|superwhisper|voiceink|spokenly|handy|universalcontrol' | sort -u    
+  echo '--- remap'; hidutil property --get UserKeyMapping; defaults             
+  -currentHost read -g 2>/dev/null | grep -A8 -i modifiermapping                
+  echo '--- key equivalents'; defaults read -g NSUserKeyEquivalents 2>/dev/null 
+  echo '--- secure input'; p=$(ioreg -l -w 0 | grep -o                          
+  '"kCGSSessionSecureInputPID"=[0-9]*' | head -1 | cut -d= -f2); echo "pid=$p"; 
+  [ -n "$p" ] && ps -o comm= -p "$p"                                            
+  echo '--- orca voice'; python3 -c "import                                     
+  json;d=json.load(open('$HOME/Library/Application Support/orca/profiles/local- 
+  default/orca-data.json'));print(d['settings'].get('voice'))"; cat             
+  ~/.orca/keybindings.json 2>/dev/null                                          
+  echo '--- orca version'; /usr/libexec/PlistBuddy -c 'Print                    
+  CFBundleShortVersionString' /Applications/Orca.app/Contents/Info.plist        
+  Jons-MacBook-Pro-7.local                                                      
+  Mac16,1                                                                       
+  /System/Library/CoreServices/UniversalControl.app/Contents/MacOS/UniversalCon 
+  trol                                                                          
+  --- remap                                                                     
+  (null)                                                                        
+      "com.apple.keyboard.modifiermapping.0-0-0" =     (                        
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771299;                      
+              HIDKeyboardModifierMappingSrc = 30064771299;                      
+          },                                                                    
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771303;                      
+              HIDKeyboardModifierMappingSrc = 30064771303;                      
+          },                                                                    
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771302;                      
+              HIDKeyboardModifierMappingSrc = 30064771302;                      
+          },                                                                    
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771298;                      
+              HIDKeyboardModifierMappingSrc = 30064771298;                      
+          }                                                                     
+      );                                                                        
+      "com.apple.keyboard.modifiermapping.9610-73-0" =     (                    
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771298;                      
+              HIDKeyboardModifierMappingSrc = 30064771299;                      
+          },                                                                    
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771302;                      
+              HIDKeyboardModifierMappingSrc = 30064771303;                      
+          },                                                                    
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771303;                      
+              HIDKeyboardModifierMappingSrc = 30064771302;                      
+          },                                                                    
+                  {                                                             
+              HIDKeyboardModifierMappingDst = 30064771299;                      
+              HIDKeyboardModifierMappingSrc = 30064771298;                      
+          }                                                                     
+      );                                                                        
+      "com.apple.trackpad.enableSecondaryClick" = 1;                            
+      "com.apple.trackpad.fiveFingerPinchSwipeGesture" = 2;                     
+      "com.apple.trackpad.fourFingerHorizSwipeGesture" = 2;                     
+      "com.apple.trackpad.fourFingerPinchSwipeGesture" = 2;                     
+      "com.apple.trackpad.fourFingerVertSwipeGesture" = 2;                      
+      "com.apple.trackpad.momentumScroll" = 1;                                  
+  --- key equivalents                                                           
+  --- secure input                                                              
+  pid=                                                                          
+  --- orca voice                                                                
+  {'enabled': True, 'sttModel': '', 'modelsDir': '', 'language': 'en',          
+  'dictationMode': 'toggle', 'terminalConfirmBeforeInsert': False,              
+  'userModels': [], 'openAiApiKeyConfigured': False, 'microphoneDeviceId':      
+  None, 'microphoneDeviceLabel': None}                                          
+  --- orca version                                                              
+  1.4.215                                                                       
+      ~                                                                     
+  """                                                                           
+
+⏺ Found it. On the MacBook, Orca's voice settings have no speech model selected:
+
+  MacBook  (1.4.215): {'enabled': True, 'sttModel': '', ...}
+  Studio   (1.4.210): {'enabled': True, 'sttModel': 'parakeet-tdt-0.6b-v3-int8',
+  ...}
+
+  Orca only claims Cmd+E for dictation when voice is enabled and a model is set.
+  In Orca's own code, the check is !voice.enabled || !voice.sttModel → return 
+  false. With an empty model, Orca lets Cmd+E fall through to the terminal pane
+  like any other keypress, which is why you get nothing or stray es. The
+  Parakeet model you've been using was downloaded on the Mac Studio (Sep 23).
+  The MacBook's Orca never had one.
+
+  Fix, on the MacBook:
+  1. Orca → Settings → Voice.
+  2. Select Parakeet TDT 0.6B v3 (int8), the same model as the Studio, and let
+     it download. It's about 670 MB into the MacBook's ~/Library/Application 
+     Support/orca/speech-models/.
+  3. Click into an Orca terminal pane and press Cmd+E. You should see a
+     "Listening" indicator. The first time, macOS will ask to allow Orca to use
+     the microphone; allow it.
+  4. To confirm, re-run in Terminal.app on the MacBook:
+  python3 -c "import json;d=json.load(open('$HOME/Library/Application
+  Support/orca/profiles/local-default/orca-data.json'));print(d['settings']['voi
+  ce']['sttModel'])"
+     It should print parakeet-tdt-0.6b-v3-int8.
+
+  Ghostty on its own won't respond to Cmd+E. Orca's dictation only works inside
+  Orca's windows, and Ghostty has no speech-to-text of its own. For dictation in
+  Ghostty or any other app, you need a system-wide tool. Your options are macOS
+  Dictation (System Settings → Keyboard → Dictation; press the Globe key twice
+  by default) or Whispering with a global shortcut. Don't give either one Cmd+E,
+  or it will take the key from Orca.
+
+  Checked and fine:
+  - Command key: TextEdit shortcuts work.
+  - Secure Input: off on the MacBook.
+  - Remaps and key-grabbing apps: there are no global remaps and no hotkey apps
+    running.
+  - Modifier mapping: the one you have only applies to one external keyboard
+    (vendor 9610, product 73) and swaps Option and Command on it. That's the
+    usual setup for a PC-layout keyboard, and it doesn't affect this problem.
+
+  I changed nothing on either machine. The only side effect of my digging: my
+  failed SSH attempt added the MacBook's host key to the Mac Studio's
+  ~/.ssh/known_hosts.
+
+✻ Worked for 29s · done 2:00 PM
+
+※ recap: You're fixing Cmd+E dictation in Orca on your MacBook, and it fails because the MacBook's Orca has no speech model selected. Next, open Orca Settings → Voice on the MacBook, choose Parakeet TDT 0.6B v3 (int8) and let it download. (disable recaps in /config)
+
+❯ 1. cmd+E works in Orca with Parakeet v3                                       
+  2. MacOS Dictation 'on' with cmd+D turns on mic blue icon in TextEdit but     
+  pressing cmd+D does not translate. Is there a different key/cmd to stop       
+  recording and start STT translation                                           
+
+⏺ Good, Orca's dictation works now.
+
+  macOS Dictation has no separate stop-and-transcribe step. Text should appear
+  at the cursor as you speak, within a second or so. Press Cmd+D again, press
+  Esc, or click the mic icon to stop, but stopping doesn't produce any extra
+  text. So if nothing appears while you talk, Dictation isn't hearing you or
+  isn't turning your speech into text.
+
+  Things to check on the MacBook, most likely first:
+
+  1. Microphone source. Go to System Settings → Keyboard → Dictation →
+     Microphone source. Dictation picks its own input, separate from Orca's. On
+     "Automatic" it can pick your iPhone (Continuity) or a disconnected headset.
+     Set it to MacBook Pro Microphone, or whatever mic works in Orca. Then
+     watch the blue mic icon while you speak: it should pulse with your voice.
+     If it doesn't, it's still the wrong mic.
+  2. Language. In the same Dictation pane, make sure English (US) is listed and
+     it has finished downloading. The first use after enabling downloads an
+     on-device model, and until that finishes Dictation can listen without
+     typing anything.
+  3. Toggle it off and on. Turn Dictation off, then on again. This often clears
+     a Dictation process that has hung.
+
+  Also, Cmd+D is a risky shortcut. In Ghostty, Cmd+D is the default for "split
+  right". A system Dictation shortcut takes Cmd+D away from every app, and it
+  could also collide in Orca. In the Dictation pane's Shortcut menu, "Press 🌐
+  Globe twice" or "Press Right Command twice" avoid clashing with app shortcuts.
+
+  If the mic icon pulses when you talk and still nothing appears after these
+  checks, tell me and I'll give you a Terminal command to watch Dictation's log
+  while you test.
+
+✻ Brewed for 20s · done 2:07 PM
+
+❯ Switched to Press Globe Twice and the mic seems right Automatic (Wireless Mic 
+  Rx), the blue STT icon appears in TextEdit but no voice is being recorded     
+
+⏺ The problem is most likely "Wireless Mic Rx". That's the USB receiver for a
+  clip-on wireless mic, and "Automatic" picked it. If the transmitter is off,
+  muted or out of range, the receiver still shows up as a working microphone but
+  sends silence. Dictation then listens to nothing, which matches the blue icon
+  with no text.
+
+  1. Switch to the built-in mic to test. In System Settings → Keyboard →
+     Dictation → Microphone source, pick MacBook Pro Microphone instead of
+     Automatic, then try Globe twice in TextEdit again.
+     - If text appears, the wireless mic is the problem.
+     - If it still doesn't, the problem is Dictation itself, not the mic.
+  2. If you want to use the wireless mic, go to System Settings → Sound → Input,
+     select Wireless Mic Rx, and speak.
+     - If the input level meter doesn't move, turn on or unmute the transmitter,
+       check it's paired to the receiver, and check its battery.
+     - Once the meter moves, Dictation on "Wireless Mic Rx" should work too.
+
+  Unplugging the receiver when you're not using the wireless mic also stops
+  "Automatic" from picking it.
+
+✻ Crunched for 9s · done 2:11 PM
+
+❯ now it's working, but I had to manually turn on my dji mic which went to      
+  sleep (how to prevent this)                                                   
+
+⏺ Web Search("DJI Mic transmitter auto power off setting disable sleep
+            receiver")
+  ⎿  Did 1 search in 6s
+
+⏺ Your DJI mic has an Auto Power Off feature. With it on, the transmitter shuts
+  itself down after about 15 minutes without a connection to the receiver and
+  without recording on its own. Once it's off, you have to press its power
+  button again, which is what you just did.
+
+  Turning it off (DJI Mic 2 or Mic 3, whose receiver has a touchscreen):
+  1. On the receiver, swipe down from the top of the screen.
+  2. Open Transmitter Settings → Transmitter Auto Off and set it to OFF.
+  3. Also check the receiver's own settings for an auto power-off option and
+     turn that off too.
+
+  With auto-off disabled on both, neither will shut down on its own.
+
+  DJI Mic Mini: the receiver has no screen, so change these settings in the DJI 
+  Mimo app instead.
+
+  Still expect a short power-saving sleep. This can't be turned off. If the
+  transmitter loses the receiver's signal, for example while the MacBook is
+  asleep, it goes into a light sleep and reconnects by itself once the signal
+  returns. That doesn't need a button press, but the first second or two of
+  dictation after a pause may be lost while it reconnects.
+
+  Tradeoff: with auto-off disabled, a transmitter you forget about will run its
+  battery down. Switch it off by hand, or put it back in the charging case, when
+  you're done.
+
+  Sources:
+  - DJI Mic Series Intelligent Features Overview (DJI Support)
+  - DJI Mic Mini 2 / Mic 2 Auto Power Off (DJI Support)
+  - Disabling Mic 2 Auto Power Off (DJI Forum)
+  - DJI Mic Mini power-saving and auto shutdown (heliguy)
+  - DJI Mic 3 FAQ
+
+✻ Cooked for 23s · done 2:13 PM
+
+❯ summarize this discussion, debugging, setup, config, etc. in a                
+  well-structured report in                                                     
+  ~/code/theailab-net-dev/dev-notes/macbook_stt_20260929.md                     
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(~/code/theailab-net-dev/dev-notes/macbook_stt_20260929.md)
+  ⎿  Wrote 153 lines to
+     ../theailab-net-dev/dev-notes/macbook_stt_20260929.md
+       1 # MacBook STT (speech-to-text) fix: Orca Cmd+E, macOS Dictation,
+          DJI mic
+       3 Date: 2026-09-29 · Orchestrator: Claude Code (claude-fable-5-1),
+          session run from an Orca pane
+       4 Related: [stt_claude-code-macos_20260921.md](stt_claude-code-mac
+       5 [ade-orca-workflow_20260923.md](ade-orca-workflow_20260923.md),
+       6 [macbook-config_20260905.md](macbook-config_20260905.md)
+       7 
+       9 
+      10 | Symptom | Root cause | Fix |
+     … +270 lines (ctrl+o to expand)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ I wrote the report to
+  ~/code/theailab-net-dev/dev-notes/macbook_stt_20260929.md (153 lines). It's a
+  new file; I didn't commit it.
+
+  It has seven sections plus a summary table at the top:
+
+  - Summary table: each symptom with its cause and fix. Cmd+E in Orca failed
+    because the MacBook's Orca had no speech model selected. Ghostty has no
+    speech-to-text of its own. Dictation typed nothing because it picked the DJI
+    receiver while the transmitter was asleep. And the DJI transmitter shuts
+    itself off automatically.
+  - §1 Setup: Orca runs on the Mac Studio and the MacBook connects to it as a
+    client, so an Orca pane on the MacBook runs its shell on the Studio.
+    Includes how that was worked out and a side-by-side table of the two
+    machines.
+  - §2 How Orca's dictation works: from the Cmd+E keybinding through to the
+    Parakeet model, including the check that ignores Cmd+E when no model is set.
+  - §3 Debugging timeline: including the wrong turns (the first "MacBook" check
+    actually ran on the Studio, and the SSH attempt failed).
+  - §4 Final settings: Orca voice, macOS Dictation on "Globe twice", and which
+    shortcuts to avoid (Cmd+E, Cmd+D).
+  - §5 DJI mic: how to turn off Transmitter Auto Off, with the DJI sources.
+  - §6 Quick checks for next time: commands to run in Terminal.app on the
+    MacBook, plus a checklist.
+  - §7 Loose ends: the MacBook entry my SSH attempt added to the Studio's
+    known_hosts, optional SSH key access, the Orca version mismatch (1.4.210 vs
+    1.4.215), and old Orca processes on the Studio.
+
+  It links to your existing notes stt_claude-code-macos_20260921.md,
+  ade-orca-workflow_20260923.md and macbook-config_20260905.md. The routing hook
+  suggested handing this to a subagent; I wrote it myself because all the
+  material was already in this conversation.
+
+✻ Sautéed for 1m 20s · done 2:21 PM

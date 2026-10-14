@@ -1,0 +1,45 @@
+ ▐▛███▛█   Claude Code v2.1.289
+▝▜██████▀  Fable 5.1 · Claude Max
+ ▝▝   ▝▝   ~/code/iphs400-mp2-cms-starter
+
+
+❯ remove the left over artifact described in:                                   
+                                                                                
+  4. Removed from this repo after re-verifying the three copies' checksums      
+  against the pushed tree: the two playbook files deleted; the transcript       
+  commit dropped with git reset --soft (it was unpushed, so history is clean —  
+  HEAD is back at b262ec5, equal to origin/main, and no commit mentions the     
+  transcript). Working tree shows only the hook's ledger rows.                  
+                                                                                
+  One thing to expect: this repo's SessionEnd hook (save_transcript.py) will    
+  most likely write a fresh session-04 transcript into docs/transcripts/ when   
+  this session ends — that's the hook doing its job, not a leftover.            
+
+⏺ Running as claude-fable-5-1. I'll confirm the leftover is the untracked
+  session-04 transcript the hook wrote, then delete it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ The leftover is the untracked 7.1 MB session-04 transcript that the SessionEnd
+  hook wrote. It is the only untracked file, and HEAD still matches
+  origin/main. Deleting it now.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Done. The leftover session-04 transcript is gone.
+
+  - Removed the untracked file
+    docs/transcripts/iphs400_mp2-cms_chat-session_04_your-name_20261005.md. It
+    was the raw 7.1 MB JSONL dump the SessionEnd hook wrote from the previous
+    session, and nothing tracked referenced it.
+  - Repo state is unchanged otherwise. HEAD is still b262ec5, equal to
+    origin/main, and the only working-tree change is the hook's rows in the
+    usage ledger. Sessions 01 through 03 remain in the transcripts folder.
+
+  Expect the same hook to write a new session-04 transcript when this session
+  ends. If you want that to stop, the fix is in the hook's save_transcript.py or
+  in the hook wiring, not in the repo tree.
+
+✻ Sautéed for 25s · done 6:18 PM
+
+※ recap: Goal was to clean the repo of the leftover session-04 transcript, and I deleted it, leaving HEAD at origin/main with only ledger changes. Next: nothing pending, unless you want the SessionEnd hook stopped from rewriting it. (disable recaps in /config)
