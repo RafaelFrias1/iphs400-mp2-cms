@@ -10,16 +10,23 @@ a draft stays a draft, a published item stays published. Publish saves and
 publishes in one click. Unpublish and Delete are separate small forms.
 
 Any change to published content (publish, saving a published item, unpublish,
-deleting a published item) runs a site update; draft-only changes never do.
+deleting a published item) runs as a site update; draft-only changes never do.
+If the site update fails (no wifi), the change is not saved and the form
+comes back with what was typed and an error, so the author can retry
+(ADR-004). A new item published offline is kept as a draft instead, so the
+text survives leaving the page.
 Only admins may set a slug by hand; an editor's slug field, if sent anyway,
 is ignored.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TypeVar
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from app import content, publish
+from app import content, db, publish
 from app.accounts import Account
 from app.content import Item, Kind, Status
 from app.markdown import render_markdown
@@ -27,11 +34,25 @@ from app.routes.console import content_list
 from app.web import current_account, require_admin, templates, verify_csrf
 
 
-def _update_site_if_published(request: Request, *statuses: Status) -> None:
-    """Run a site update when the item was or is now published."""
+T = TypeVar("T")
+
+OFFLINE = ("Website not updated, so this change was not saved. "
+           "Try again when you're online.")
+OFFLINE_KEPT_AS_DRAFT = ("Website not updated, so this was saved as a draft. "
+                         "Publish it again when you're online.")
+
+
+def _change(request: Request, change: Callable[[db.Source], T],
+            *statuses: Status) -> T:
+    """Make `change`; as a site update when the item was or is now published.
+
+    Raises publish.SiteUpdateFailed, with nothing saved, if the update fails.
+    """
+    state = request.app.state
     if Status.PUBLISHED in statuses:
-        publish.update_site(request.app.state.db_path,
-                            request.app.state.site_dir)
+        return publish.update_site(state.db_path, state.site_dir,
+                                   state.deployer, change)
+    return change(state.db_path)
 
 
 def _status_after(action: str, current: Status) -> Status:
@@ -66,6 +87,13 @@ def item_router(kind: Kind) -> APIRouter:
                                 detail=f"You can only change your own {kind}s.")
         return item
 
+    def _offline(request: Request, me: Account, item: Item,
+                 kept_as_draft: bool = False):
+        """The item's form as saved, after a site update failed."""
+        return _form(request, me, item=item, title=item.title, body=item.body,
+                     slug=item.slug, status_code=503,
+                     error=OFFLINE_KEPT_AS_DRAFT if kept_as_draft else OFFLINE)
+
     def _to_item(item_id: int) -> RedirectResponse:
         return RedirectResponse(f"{base}/{item_id}", status_code=303)
 
@@ -91,9 +119,13 @@ def item_router(kind: Kind) -> APIRouter:
             return _form(request, me, item=None, title=title, body=body,
                          slug="", error="Enter a title.", status_code=400)
         status = _status_after(action, Status.DRAFT)
-        item = content.create_item(request.app.state.db_path, kind,
-                                   title.strip(), body, me, status)
-        _update_site_if_published(request, status)
+        try:
+            item = _change(request, lambda source: content.create_item(
+                source, kind, title.strip(), body, me, status), status)
+        except publish.SiteUpdateFailed:
+            item = content.create_item(request.app.state.db_path, kind,
+                                       title.strip(), body, me)
+            return _offline(request, me, item, kept_as_draft=True)
         return _to_item(item.id)
 
     @router.get("/{item_id}")
@@ -114,7 +146,7 @@ def item_router(kind: Kind) -> APIRouter:
         if action == "preview":
             return _form(request, me, item=item, title=title, body=body,
                          slug=slug, preview=True)
-        error = ""
+        error, status_code = "", 400
         status = _status_after(action, item.status)
         new_slug = content.slugify(slug) if me.is_admin else None
         if not title.strip():
@@ -123,14 +155,16 @@ def item_router(kind: Kind) -> APIRouter:
             error = "Enter a slug with at least one letter or digit."
         else:
             try:
-                content.update_item(request.app.state.db_path, item.id,
-                                    title.strip(), body, new_slug, status)
+                _change(request, lambda source: content.update_item(
+                    source, item.id, title.strip(), body, new_slug, status),
+                    item.status, status)
             except content.SlugTaken:
                 error = f"The slug {new_slug} is already used by another item."
+            except publish.SiteUpdateFailed:
+                error, status_code = OFFLINE, 503
         if error:
             return _form(request, me, item=item, title=title, body=body,
-                         slug=slug, error=error, status_code=400)
-        _update_site_if_published(request, item.status, status)
+                         slug=slug, error=error, status_code=status_code)
         return _to_item(item.id)
 
     @router.post("/{item_id}/unpublish", dependencies=[Depends(verify_csrf)])
@@ -138,16 +172,22 @@ def item_router(kind: Kind) -> APIRouter:
                        me: Account = Depends(current_account)):
         item = _editable(request, me, item_id)
         if item.status is Status.PUBLISHED:
-            content.set_status(request.app.state.db_path, item.id, Status.DRAFT)
-            _update_site_if_published(request, item.status)
+            try:
+                _change(request, lambda source: content.set_status(
+                    source, item.id, Status.DRAFT), item.status)
+            except publish.SiteUpdateFailed:
+                return _offline(request, me, item)
         return _to_item(item.id)
 
     @router.post("/{item_id}/delete", dependencies=[Depends(verify_csrf)])
     def delete_item(request: Request, item_id: int,
                     me: Account = Depends(current_account)):
         item = _editable(request, me, item_id)
-        content.delete_item(request.app.state.db_path, item.id)
-        _update_site_if_published(request, item.status)
+        try:
+            _change(request, lambda source: content.delete_item(source, item.id),
+                    item.status)
+        except publish.SiteUpdateFailed:
+            return _offline(request, me, item)
         return RedirectResponse(base, status_code=303)
 
     return router

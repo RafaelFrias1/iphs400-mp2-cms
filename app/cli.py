@@ -3,14 +3,16 @@
     uv run cms serve      # admin console + public preview at http://localhost:8000
     uv run cms publish    # render site/ from published content
     uv run cms deploy     # push site/ to the gh-pages branch (Pages serves it)
+
+The console does both after every change to published content (ADR-004);
+these commands are for the Webmaster.
 """
 from __future__ import annotations
 
 import argparse
-import subprocess
-import sys
 
 from app import settings
+from app.deploy import DeployFailed, push_to_gh_pages
 from app.publish import render_site
 
 
@@ -40,14 +42,14 @@ def main(argv: list[str] | None = None) -> int:
         if not settings.SITE.exists():
             print("site/ does not exist yet — run `uv run cms publish` first.")
             return 1
-        result = subprocess.run(
-            [sys.executable, "-m", "ghp_import", "-n", "-p", "-m", args.message,
-             str(settings.SITE)],
-        )
-        if result.returncode == 0:
-            print("Pushed to gh-pages. Settings -> Pages -> Deploy from a branch -> "
-                  "gh-pages / root, then wait up to 10 minutes.")
-        return result.returncode
+        try:
+            push_to_gh_pages(settings.SITE, args.message)
+        except DeployFailed as exc:
+            print(f"Deploy failed: {exc}")
+            return 1
+        print("Pushed to gh-pages. Settings -> Pages -> Deploy from a branch -> "
+              "gh-pages / root, then wait up to 10 minutes.")
+        return 0
     return 1
 
 

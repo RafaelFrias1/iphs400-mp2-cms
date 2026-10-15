@@ -12,17 +12,20 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import db, settings
+from app import db, deploy, settings
 from app.routes import accounts, auth, console, items, public
 from app.web import LoginRequired
 
 
 def create_app(db_path: Path | None = None,
-               site_dir: Path | None = None) -> FastAPI:
+               site_dir: Path | None = None,
+               deployer: deploy.Deployer | None = None) -> FastAPI:
     app = FastAPI(title="IPHS 400 MP2 CMS")
     app.state.db_path = db_path or settings.DATABASE_PATH
     # Where site updates write; tests pass a temporary directory.
     app.state.site_dir = site_dir or settings.SITE
+    # Sends each site update to the web host; tests pass a fake (ADR-004).
+    app.state.deployer = deployer or deploy.push_to_gh_pages
     db.init(app.state.db_path)
 
     # Signed session cookie that ends when the browser closes (shared laptop).

@@ -4,10 +4,12 @@ render_site() writes the home page (the Travel Lineup page if published, then
 published posts newest first), one file per published post under posts/ and
 one per published page under pages/. Every page carries a nav built from the
 published pages. The console previews the same pages at / through home_html()
-and item_html(), so it shows what readers will see. update_site() is what the console runs
-after any change to published content. `cms publish` calls render_site() from
-this module; T07 (ADR-004) adds the deploy to update_site() and decides how
-the CLI reaches it.
+and item_html(), so it shows what readers will see.
+
+update_site() is what the console runs for any change to published content
+(ADR-004): the change, the render and the deploy succeed or fail together.
+`cms publish` calls render_site() and `cms deploy` the default deployer, so
+the Webmaster can still do either step by hand.
 
 Two rules the rubric checks:
 
@@ -18,13 +20,17 @@ Two rules the rubric checks:
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from sqlite3 import Connection
+from typing import TypeVar
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app import content, settings
+from app import content, db, settings
 from app.content import Item, Kind, Status
+from app.deploy import Deployer, DeployFailed
 from app.markdown import render_markdown
 
 CSS = """/* Phones first: one column, nothing wider than the screen. */
@@ -70,11 +76,11 @@ def environment() -> Environment:
     return env
 
 
-def published(db_path: Path, kind: Kind) -> list[Item]:
+def published(source: db.Source, kind: Kind) -> list[Item]:
     """Newest first. A database that doesn't exist yet (a fresh clone) has none."""
-    if not db_path.exists():
+    if isinstance(source, Path) and not source.exists():
         return []
-    return content.list_items(db_path, kind, Status.PUBLISHED)
+    return content.list_items(source, kind, Status.PUBLISHED)
 
 
 def _render(template: str, prefix: str, nav_pages: list[Item], preview: bool,
@@ -110,12 +116,13 @@ def item_html(item: Item, pages: list[Item], preview: bool = False) -> str:
                    body=render_markdown(item.body))
 
 
-def render_site(out: Path | None = None, db_path: Path | None = None) -> Path:
-    """Rebuild `out` from scratch with every published item in `db_path`."""
+def render_site(out: Path | None = None,
+                source: db.Source | None = None) -> Path:
+    """Rebuild `out` from scratch with every published item in `source`."""
     out = out or settings.SITE
-    db_path = db_path or settings.DATABASE_PATH
-    pages = published(db_path, Kind.PAGE)
-    posts = published(db_path, Kind.POST)
+    source = source or settings.DATABASE_PATH
+    pages = published(source, Kind.PAGE)
+    posts = published(source, Kind.POST)
     if out.exists():
         shutil.rmtree(out)
     for kind in Kind:
@@ -128,6 +135,36 @@ def render_site(out: Path | None = None, db_path: Path | None = None) -> Path:
     return out
 
 
-def update_site(db_path: Path, out: Path) -> Path:
-    """Run a site update after a change to published content."""
-    return render_site(out, db_path)
+T = TypeVar("T")
+
+
+class SiteUpdateFailed(Exception):
+    """The site update failed, so the change it was for was rolled back."""
+
+
+def update_site(db_path: Path, out: Path, deploy: Deployer,
+                change: Callable[[Connection], T]) -> T:
+    """Make `change` to published content and put the result on the website.
+
+    The change is staged in one transaction, `out` is rendered from that
+    would-be state, and `deploy` sends it. Only after a successful deploy is
+    the change committed. If anything fails, the change is rolled back and
+    `out` is rendered again from what is saved, so it matches the website. A
+    failed deploy raises SiteUpdateFailed; any other error (SlugTaken from
+    `change`, a bug in rendering) passes through unchanged.
+
+    The transaction holds SQLite's write lock while the deploy runs, so a
+    second save at that moment waits up to 5 seconds and then fails. On one
+    team laptop, that is accepted.
+    """
+    try:
+        with db.connect(db_path) as conn:
+            result = change(conn)
+            render_site(out, conn)
+            deploy(out)
+    except Exception as exc:
+        render_site(out, db_path)
+        if isinstance(exc, DeployFailed):
+            raise SiteUpdateFailed(str(exc)) from exc
+        raise
+    return result

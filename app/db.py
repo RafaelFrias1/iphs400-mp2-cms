@@ -2,6 +2,10 @@
 
 The database is never committed (it is gitignored); scripts/seed_demo.py
 rebuilds it on a fresh clone.
+
+Functions that read or write take a `Source`: usually the database's path,
+but a site update passes an open connection instead, so a change and the
+site rendered from it share one transaction (see publish.update_site()).
 """
 from __future__ import annotations
 
@@ -36,10 +40,20 @@ CREATE TABLE IF NOT EXISTS items (
 """
 
 
+Source = Path | sqlite3.Connection
+
+
 @contextmanager
-def connect(path: Path) -> Iterator[sqlite3.Connection]:
-    """Open the database, commit on success, roll back on error, always close."""
-    conn = sqlite3.connect(path)
+def connect(source: Source) -> Iterator[sqlite3.Connection]:
+    """Open the database, commit on success, roll back on error, always close.
+
+    Given an open connection, use it as is: whoever opened it commits or
+    rolls back, so the changes made here stay staged until then.
+    """
+    if isinstance(source, sqlite3.Connection):
+        yield source
+        return
+    conn = sqlite3.connect(source)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     try:

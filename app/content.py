@@ -13,10 +13,10 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from pathlib import Path
 
 from app import db
 from app.accounts import Account
+from app.db import Source
 
 
 class Kind(StrEnum):
@@ -88,41 +88,41 @@ def _unique_slug(conn: sqlite3.Connection, title: str, kind: Kind) -> str:
     return slug
 
 
-def create_item(db_path: Path, kind: Kind, title: str, body: str,
+def create_item(source: Source, kind: Kind, title: str, body: str,
                 author: Account, status: Status = Status.DRAFT) -> Item:
     now = _now()
-    with db.connect(db_path) as conn:
+    with db.connect(source) as conn:
         cursor = conn.execute(
             "INSERT INTO items (kind, title, slug, body, status, author_id,"
             " created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (kind, title, _unique_slug(conn, title, kind), body, status,
              author.id, now, now),
         )
-    return get_item(db_path, cursor.lastrowid)
+    return get_item(source, cursor.lastrowid)
 
 
-def get_item(db_path: Path, item_id: int) -> Item | None:
-    with db.connect(db_path) as conn:
+def get_item(source: Source, item_id: int) -> Item | None:
+    with db.connect(source) as conn:
         row = conn.execute(_SELECT + "WHERE items.id = ?", (item_id,)).fetchone()
     return _from_row(row) if row else None
 
 
-def list_items(db_path: Path, kind: Kind,
+def list_items(source: Source, kind: Kind,
                status: Status | None = None) -> list[Item]:
     """Newest first; only items with `status` when one is given."""
-    with db.connect(db_path) as conn:
+    with db.connect(source) as conn:
         rows = conn.execute(
             _SELECT + "WHERE kind = ? AND status = COALESCE(?, status)"
             " ORDER BY created_at DESC, items.id DESC", (kind, status)).fetchall()
     return [_from_row(row) for row in rows]
 
 
-def find_items(db_path: Path, kind: Kind | None = None,
+def find_items(source: Source, kind: Kind | None = None,
                status: Status | None = None,
                author_id: int | None = None) -> list[Item]:
     """The console's content list: newest updated first; filters combine,
     and each applies only when given."""
-    with db.connect(db_path) as conn:
+    with db.connect(source) as conn:
         rows = conn.execute(
             _SELECT + "WHERE kind = COALESCE(?, kind)"
             " AND status = COALESCE(?, status)"
@@ -132,24 +132,24 @@ def find_items(db_path: Path, kind: Kind | None = None,
     return [_from_row(row) for row in rows]
 
 
-def count_items(db_path: Path) -> dict[tuple[Kind, Status], int]:
+def count_items(source: Source) -> dict[tuple[Kind, Status], int]:
     """How many items of each kind and status, zero included."""
     counts = {(kind, status): 0 for kind in Kind for status in Status}
-    with db.connect(db_path) as conn:
+    with db.connect(source) as conn:
         for row in conn.execute("SELECT kind, status, COUNT(*) AS n FROM items"
                                 " GROUP BY kind, status"):
             counts[Kind(row["kind"]), Status(row["status"])] = row["n"]
     return counts
 
 
-def update_item(db_path: Path, item_id: int, title: str, body: str,
+def update_item(source: Source, item_id: int, title: str, body: str,
                 slug: str | None = None, status: Status | None = None) -> None:
     """Change title and body; change the slug and status too when given.
 
     Raises SlugTaken if the new slug belongs to another item.
     """
     try:
-        with db.connect(db_path) as conn:
+        with db.connect(source) as conn:
             conn.execute(
                 "UPDATE items SET title = ?, body = ?, slug = COALESCE(?, slug),"
                 " status = COALESCE(?, status), updated_at = ? WHERE id = ?",
@@ -159,12 +159,12 @@ def update_item(db_path: Path, item_id: int, title: str, body: str,
         raise SlugTaken(slug) from exc
 
 
-def set_status(db_path: Path, item_id: int, status: Status) -> None:
-    with db.connect(db_path) as conn:
+def set_status(source: Source, item_id: int, status: Status) -> None:
+    with db.connect(source) as conn:
         conn.execute("UPDATE items SET status = ?, updated_at = ? WHERE id = ?",
                      (status, _now(), item_id))
 
 
-def delete_item(db_path: Path, item_id: int) -> None:
-    with db.connect(db_path) as conn:
+def delete_item(source: Source, item_id: int) -> None:
+    with db.connect(source) as conn:
         conn.execute("DELETE FROM items WHERE id = ?", (item_id,))

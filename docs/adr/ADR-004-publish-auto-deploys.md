@@ -34,3 +34,7 @@ always means "on the website".
 - ADR-001's consequence "content changes are not live until `cms publish` runs"
   no longer describes what posters experience; the step still exists, but the
   console runs it for them.
+- A brand-new post or page published without a connection is kept as a
+  draft (decided 2026-10-15 during T07), so the typed text survives leaving
+  the page; Publish is one click on that draft once back online. Every other
+  failed change leaves the item exactly as it was.

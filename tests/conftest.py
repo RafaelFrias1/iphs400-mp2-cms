@@ -7,16 +7,19 @@ in as a seeded account of that role, so access-control tests stay one line:
         assert client_as("editor").get("/admin/accounts").status_code in (302, 403)
 
 Every test that uses these fixtures gets its own fresh database with the demo
-accounts seeded, so tests never touch your real cms.db.
+accounts seeded, so tests never touch your real cms.db. Every app gets the
+`deployer` fake, so no test touches the network or GitHub.
 """
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.accounts import Role
+from app.deploy import DeployFailed
 from app.main import create_app
 from app.seed import DEMO_EMAILS, seed_demo
 
@@ -46,6 +49,30 @@ def site_dir(tmp_path):
     return tmp_path / "site"
 
 
+class FakeDeployer:
+    """Stands in for the push to gh-pages. Records what each deploy would have
+    sent (the site's index.html and file list); raises when `failing` is set."""
+
+    def __init__(self):
+        self.failing = False
+        self.deployed: list[dict[str, str]] = []
+
+    def __call__(self, site: Path) -> None:
+        if self.failing:
+            raise DeployFailed("Could not resolve host: github.com")
+        self.deployed.append({str(f.relative_to(site)): f.read_text()
+                              for f in site.rglob("*") if f.is_file()})
+
+    @property
+    def calls(self) -> int:
+        return len(self.deployed)
+
+
+@pytest.fixture
+def deployer() -> FakeDeployer:
+    return FakeDeployer()
+
+
 @pytest.fixture
 def csrf():
     """Return a helper: csrf(client, "/login") -> the CSRF token on that page."""
@@ -59,16 +86,18 @@ def csrf():
 
 
 @pytest.fixture
-def client(db_path, site_dir) -> TestClient:
-    return TestClient(create_app(db_path=db_path, site_dir=site_dir))
+def client(db_path, site_dir, deployer) -> TestClient:
+    return TestClient(create_app(db_path=db_path, site_dir=site_dir,
+                                 deployer=deployer))
 
 
 @pytest.fixture
-def login_as(db_path, site_dir, csrf):
+def login_as(db_path, site_dir, deployer, csrf):
     """Return a factory: login_as(email, password) -> a logged-in TestClient."""
 
     def _login(email: str, password: str) -> TestClient:
-        c = TestClient(create_app(db_path=db_path, site_dir=site_dir))
+        c = TestClient(create_app(db_path=db_path, site_dir=site_dir,
+                                  deployer=deployer))
         response = c.post("/login", data={"email": email, "password": password,
                                           "csrf_token": csrf(c, "/login")},
                           follow_redirects=False)

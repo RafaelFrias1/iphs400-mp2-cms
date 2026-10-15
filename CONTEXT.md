@@ -88,6 +88,10 @@ _Avoid_: live, posted
 Rebuilding the public site from all published content and sending it to the web host. It happens automatically whenever published content changes; nobody presses a button for it.
 _Avoid_: publish (for this step), sync, push
 
+**Deployer**:
+The part of a site update that sends the rebuilt site to the web host (GitHub Pages). If it fails (no wifi), the site update fails and the change is not saved.
+_Avoid_: publisher, uploader
+
 ## Places
 
 **Team laptop**:
