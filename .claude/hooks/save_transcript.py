@@ -34,7 +34,11 @@ def main() -> None:
     project = Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or ".")
     out = project / "docs" / "transcripts"
     out.mkdir(parents=True, exist_ok=True)
-    number = f"{len(list(out.glob('*.md'))) + 1:02d}"
+    # One more than the highest number so far, so moving a file out (such as
+    # the template's own sessions) never makes two sessions share a number.
+    taken = [int(m.group(1)) for p in out.glob("*.md")
+             if (m := re.search(r"_chat-session_(\d+)_", p.name))]
+    number = f"{max(taken, default=0) + 1:02d}"
     target = out / (f"iphs400_mp2-cms_chat-session_{number}_"
                     f"{student_slug(project)}_{datetime.now().strftime('%Y%m%d')}.md")
     if not target.exists():

@@ -18,6 +18,11 @@ Opus gets a hard design question wrong twice.
 
 Rule of thumb from these rows: **weekly ≈ 0.2 × 5h spend**.
 
+> **Correction (2026-10-15):** the 8ee601d3 row is not mine. That session and
+> its ledger rows came with the starter template (recorded on the template
+> author's machine); they are now in `docs/transcripts/template/`. The plan
+> below is unchanged, but its baseline rests on the Opus row only.
+
 ## Plan
 
 | Stage | Model | Effort | Estimate (% of a 5-hour window) |

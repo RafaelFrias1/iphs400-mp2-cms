@@ -78,9 +78,10 @@ Backends used:
 
 | Model | Provider | Sessions | Used for |
 |---|---|---|---|
-| Opus 5.5 | Anthropic (Claude Code) | 05–16 | everything from setup to T07 |
-| Fable 5.1 | Anthropic (Claude Code) | 01–04 | early setup and housekeeping |
-| Sonnet 5 | Anthropic (Claude Code) | 03 | one commit-and-cleanup session |
+| Opus 5.5 | Anthropic (Claude Code) | 05–17 | everything from setup to the final fixes |
+
+Sessions 01–04 are the template author's, shipped with the starter repo; they
+are kept in `docs/transcripts/template/` and are not my work.
 
 Skills Used:
 /setup-matt-pocock-skills was used once at the start to setup the skills I would use for the project.
