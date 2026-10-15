@@ -25,7 +25,8 @@ def create_app(db_path: Path | None = None,
     # Where site updates write; tests pass a temporary directory.
     app.state.site_dir = site_dir or settings.SITE
     # Sends each site update to the web host; tests pass a fake (ADR-004).
-    app.state.deployer = deployer or deploy.push_to_gh_pages
+    app.state.deployer = deployer or (
+        deploy.push_to_gh_pages if settings.DEPLOY else deploy.render_only)
     db.init(app.state.db_path)
 
     # Signed session cookie that ends when the browser closes (shared laptop).

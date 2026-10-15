@@ -183,9 +183,35 @@ class FakeRun:
         return subprocess.CompletedProcess(cmd, self.returncode, "", "rejected")
 
 
+@pytest.mark.parametrize("setting, expected", [
+    (True, deploy.push_to_gh_pages), (False, deploy.render_only)])
+def test_cms_deploy_on_chooses_the_push_to_gh_pages(monkeypatch, tmp_path,
+                                                    setting, expected):
+    monkeypatch.setattr(settings, "DEPLOY", setting)
+    assert create_app(db_path=tmp_path / "cms.db").state.deployer is expected
+
+
+def test_a_fresh_clone_publishes_into_site_without_pushing(
+        db_path, site_dir, csrf, monkeypatch):
+    """The grader's clean clone has no CMS_DEPLOY, so nothing is pushed."""
+    from fastapi.testclient import TestClient
+    from conftest import DEMO_ACCOUNTS
+
+    run = FakeRun(returncode=1)
+    monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr(settings, "DEPLOY", False)
+    c = TestClient(create_app(db_path=db_path, site_dir=site_dir))
+    admin = DEMO_ACCOUNTS["admin"]
+    c.post("/login", data={**admin, "csrf_token": csrf(c, "/login")})
+    response = c.post("/admin/posts", follow_redirects=False, data={
+        "title": "Practice schedule", "body": "", "action": "publish",
+        "csrf_token": csrf(c, "/admin")})
+    assert response.status_code == 303
+    assert "Practice schedule" in site_text(site_dir)
+    assert run.calls == []
+
+
 def test_the_default_deployer_pushes_to_gh_pages(monkeypatch, tmp_path):
-    assert create_app(db_path=tmp_path / "cms.db").state.deployer \
-        is deploy.push_to_gh_pages
     run = FakeRun()
     monkeypatch.setattr(subprocess, "run", run)
     monkeypatch.setenv("CMS_GITHUB_TOKEN", "fake-token-not-real")

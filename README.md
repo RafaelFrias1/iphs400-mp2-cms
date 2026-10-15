@@ -1,35 +1,64 @@
-# IPHS 400 — Mini-Project #2 starter (Web CMS)
+# Kenyon Men's Golf CMS (IPHS 400 Mini-Project #2)
 
-Click **Use this template** → name your repo **`iphs400-mp2-cms`** → make it **Public**.
-Do not fork: a fork arrives without an Issues tab, and your tickets live in Issues.
+A small CMS for the Kenyon men's golf team. The Coach, Captain and Team manager
+write posts and pages in a local admin console (FastAPI, Jinja, SQLite). Every
+change to published content rebuilds the static public site and pushes it to
+GitHub Pages (ADR-004). Vocabulary is in `CONTEXT.md`; decisions are in `docs/adr/`.
 
-## Start here
+## Live URL
 
-1. `docs/manual_iphs400_mp2-web-cms_20260922.md` — the manual. Read Part 0 and Part 1 first.
-2. `docs/mp2-grading-rubric_20260922.md` — how you are graded. Read it **before** you build or revise.
-3. `docs/mp2-setup_context-threshold-hook_20260922.md` — Exercise A, in Part 4 of the manual.
+https://rafaelfrias1.github.io/iphs400-mp2-cms/
 
-## Run it
+## Run locally
+
+Needs Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-cp .env.example .env
-uv run cms serve        # then open http://localhost:8000/admin  -> "T00: hello admin"
+cp .env.example .env                       # then change the passwords if you like
+set -a; . ./.env; set +a                   # load .env (it is not read automatically)
+uv run python scripts/seed_demo.py         # demo accounts, 3 pages, a few posts
+uv run cms serve                           # http://localhost:8000
 ```
+
+Open http://localhost:8000/login and log in with a demo account. The password
+is the one in `.env`.
+
+| Account | Email | Role | Password from |
+|---|---|---|---|
+| Coach | `admin@example.test` | admin | `CMS_ADMIN_PASSWORD` |
+| Captain | `editor@example.test` | editor | `CMS_EDITOR_PASSWORD` |
+
+`http://localhost:8000/` previews the public site; `/admin` is the console.
+
+**Publishing.** Clicking Publish (or editing, unpublishing or deleting
+something published) rebuilds `site/`. Only where `.env` has `CMS_DEPLOY=on`
+does it also push `site/` to the `gh-pages` branch. If that push fails (no
+wifi), the change is not saved. A fresh clone leaves `CMS_DEPLOY` unset, so
+publishing there only writes `site/`. Preview it with
+`python3 -m http.server -d site 8001`.
+
+The Webmaster can still run each step by hand:
+
+```bash
+uv run cms publish    # render site/ from published content
+uv run cms deploy     # push site/ to gh-pages (uses CMS_GITHUB_TOKEN if set)
+```
+
+**Tests.** `uv run pytest -q`. The tests use a fake deployer and never touch
+the network.
 
 ## What is here
 
 ```text
-.claude/hooks/     the context meter and usage ledger (Exercise A lives in ctx_guard.py)
-scripts/           usage_report.py (Exercise B lives in spend()), check_submission.py, seed_demo.py
-tests/             the exercise tests, plus helpers such as client_as("editor")
-app/, templates/   the T00 skeleton — every CMS feature is yours to build
-docs/adr/          two example decision records
+app/               the CMS: routes/, publish.py (site update), deploy.py (push to gh-pages)
+templates/         admin/ (the console) and public/ (the static site)
+tests/             one file per ticket (test_t01_login.py ... test_t07_deploy.py)
+scripts/           seed_demo.py, check_submission.py, usage_report.py
+.claude/hooks/     the context meter and usage ledger
+docs/adr/          decision records; docs/handoff/ session handoffs
+notes/             client brief, field notes, research, token budget, usage ledger
 ```
-
-Two functions are deliberately unfinished and their tests fail until you write them:
-`decide()` in `.claude/hooks/ctx_guard.py` and `spend()` in `scripts/usage_report.py`.
-Both are graded in Stage 2. Use `/tdd`, as the manual says.
 
 ## Deadlines
 

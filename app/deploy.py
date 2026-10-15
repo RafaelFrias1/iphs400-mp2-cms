@@ -1,8 +1,9 @@
 """The deployer: sends the rendered site/ to the web host (ADR-004).
 
 A deployer is any callable that takes the site directory and raises if the
-site did not reach the host. create_app() takes one; tests pass a fake, and
-the default is push_to_gh_pages(), which `cms deploy` also uses.
+site did not reach the host. create_app() takes one; tests pass a fake. The
+default is push_to_gh_pages() (which `cms deploy` also uses) when CMS_DEPLOY
+is "on", and render_only() otherwise, so a fresh clone never pushes.
 
 GitHub access comes from the environment, never from a committed file. When
 CMS_GITHUB_TOKEN is set, git sends it as an HTTP header (through git's
@@ -29,6 +30,10 @@ TIMEOUT_SECONDS = 120
 
 class DeployFailed(Exception):
     """The site did not reach the host (no network, or GitHub said no)."""
+
+
+def render_only(site: Path) -> None:
+    """Send nothing: the site update stops at site/ (CMS_DEPLOY is not on)."""
 
 
 def _git_env() -> dict[str, str]:

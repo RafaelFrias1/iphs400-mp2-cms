@@ -38,3 +38,6 @@ always means "on the website".
   draft (decided 2026-10-15 during T07), so the typed text survives leaving
   the page; Publish is one click on that draft once back online. Every other
   failed change leaves the item exactly as it was.
+- The push runs only where `CMS_DEPLOY=on` (the team laptop's `.env`). A
+  fresh clone, such as the grader's, has it unset, so publishing there renders
+  `site/` without pushing to a repo it has no access to (decided 2026-10-15).
