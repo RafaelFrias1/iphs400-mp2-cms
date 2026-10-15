@@ -46,24 +46,30 @@ def main() -> None:
     week = (limits.get("seven_day") or {}).get("used_percentage")
     base = os.environ.get("ANTHROPIC_BASE_URL", "")
     provider = "anthropic" if not base else base.split("/")[2]
-    pct = (data.get("context_window") or {}).get("used_percentage")
-    if pct is None:
-        print(f"[{model}] ctx --")
-        return
-    pct = float(pct)
+    window = data.get("context_window") or {}
+    pct = window.get("used_percentage")
+    size = window.get("context_window_size")
 
+    # Record the window size even before the first reply (pct still null):
+    # the Stop hook needs it to turn transcript token counts into a percentage.
     session = data.get("session_id") or "default"
     state_dir = project_dir(data) / ".claude" / "state"
     try:
         state_dir.mkdir(parents=True, exist_ok=True)
         tmp = state_dir / f"ctx_{session}.json.tmp"
         tmp.write_text(json.dumps({
-            "pct": pct, "ts": time.time(), "model": model, "effort": effort,
+            "pct": None if pct is None else float(pct), "window": size,
+            "ts": time.time(), "model": model, "effort": effort,
             "provider": provider, "five_h": five, "weekly": week,
         }))
         tmp.replace(state_dir / f"ctx_{session}.json")  # atomic swap
     except OSError:
         pass  # meter still prints even if the disk write fails
+
+    if pct is None:
+        print(f"[{model}] ctx --")
+        return
+    pct = float(pct)
 
     def show(v):
         return f"{v:.0f}%" if isinstance(v, (int, float)) else "n/a"

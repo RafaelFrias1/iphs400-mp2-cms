@@ -2,8 +2,11 @@
 """Stop hook: warn when the context window crosses 50% / 60% / 80%.
 
 Claude Code runs this after every Claude turn (the Stop event) and pipes the
-event JSON to stdin. It reads the percentage the status line recorded, and
-prints {"systemMessage": "..."} the first time usage crosses a threshold.
+event JSON to stdin. It computes the current percentage from the last
+assistant message's token usage in the transcript, divided by the window size
+the status line recorded. (The status line's own percentage lags one turn: it
+refreshes just after this hook runs.) It prints {"systemMessage": "..."} the
+first time usage crosses a threshold.
 The message is shown to YOU, not to Claude. The hook never blocks and never
 runs /compact itself: slash commands are yours to type.
 
@@ -69,13 +72,47 @@ def decide(pct: float, last_band: int) -> tuple[str | None, int]:
         return message_for(band, pct), band
     return None, band  # same band: stay quiet; lower band: re-arm
 
+
+def pct_from_transcript(transcript: Path, window: float) -> float | None:
+    """Context % of the last main-thread assistant message, or None.
+
+    Counts input tokens only (fresh + cache read + cache write), the same
+    quantity the status line's used_percentage measures. Stops at a compaction
+    boundary: usage from before /compact no longer describes the context.
+    """
+    if not window:
+        return None
+    try:
+        lines = transcript.read_text().splitlines()
+    except OSError:
+        return None
+    for line in reversed(lines):
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if entry.get("type") == "system" and entry.get("subtype") == "compact_boundary":
+            return None
+        if entry.get("type") != "assistant" or entry.get("isSidechain"):
+            continue
+        message = entry.get("message") or {}
+        usage = message.get("usage") or {}
+        tokens = sum(
+            int(usage.get(k) or 0)
+            for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
+        )
+        if tokens and message.get("model") != "<synthetic>":
+            return tokens / float(window) * 100
+    return None
+
+
 LEDGER_COLUMNS = [
     "ts", "session", "phase", "provider", "model", "effort",
     "ctx_pct", "five_h_pct", "weekly_pct",
 ]
 
 
-def log_usage(project: Path, session: str, state: dict) -> None:
+def log_usage(project: Path, session: str, state: dict, pct: float) -> None:
     """Append one row per turn to notes/usage-ledger.csv (rubric item B7)."""
     ledger = project / "notes" / "usage-ledger.csv"
     phase_file = project / ".claude" / "state" / "phase"
@@ -90,7 +127,7 @@ def log_usage(project: Path, session: str, state: dict) -> None:
     row = [
         datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         session[:8], phase, cell(state.get("provider")), cell(state.get("model")),
-        cell(state.get("effort")), f"{float(state.get('pct', 0)):.1f}",
+        cell(state.get("effort")), f"{pct:.1f}",
         cell(state.get("five_h")), cell(state.get("weekly")),
     ]
     try:
@@ -118,15 +155,22 @@ def main() -> None:
 
     try:
         state = json.loads(ctx_file.read_text())
-        pct = float(state["pct"])
-    except (OSError, ValueError, KeyError):
+    except (OSError, ValueError):
         return  # no status-line data yet: stay silent
+    pct = None
+    if event.get("transcript_path"):
+        pct = pct_from_transcript(Path(event["transcript_path"]), state.get("window"))
+    if pct is None:
+        try:
+            pct = float(state["pct"])  # fallback: last status-line reading
+        except (KeyError, TypeError, ValueError):
+            return
     try:
         last_band = int(json.loads(band_file.read_text())["band"])
     except (OSError, ValueError, KeyError):
         last_band = NONE
 
-    log_usage(project, session, state)
+    log_usage(project, session, state, pct)
 
     msg, band = decide(pct, last_band)
     try:

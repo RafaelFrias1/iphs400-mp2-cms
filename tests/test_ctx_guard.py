@@ -96,3 +96,43 @@ def test_precompact_logs_focus_note(tmp_path):
          "custom_instructions": "keep: ticket #5 criteria"}, tmp_path)
     log = (tmp_path / "docs/process/compaction-log.md").read_text()
     assert "| manual | keep: ticket #5 criteria |" in log
+
+
+# ---- transcript: current turn, not the status line's stale reading --------
+
+def _assistant(tokens, sidechain=False):
+    return {"type": "assistant", "isSidechain": sidechain,
+            "message": {"model": "claude-opus-5-5",
+                        "usage": {"input_tokens": 2, "cache_read_input_tokens": tokens - 2,
+                                  "cache_creation_input_tokens": 0, "output_tokens": 50}}}
+
+
+def _transcript(tmp_path, *entries):
+    path = tmp_path / "t.jsonl"
+    path.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+    return path
+
+
+def test_transcript_pct_uses_last_main_thread_message(tmp_path):
+    path = _transcript(tmp_path, _assistant(100_000), _assistant(630_000),
+                       _assistant(900_000, sidechain=True))
+    assert guard.pct_from_transcript(path, 1_000_000) == 63.0
+
+
+def test_transcript_pct_ignores_usage_before_compaction(tmp_path):
+    path = _transcript(tmp_path, _assistant(700_000),
+                       {"type": "system", "subtype": "compact_boundary"})
+    assert guard.pct_from_transcript(path, 1_000_000) is None
+
+
+def test_first_turn_warns_before_status_line_has_a_percentage(tmp_path):
+    # Session start: the status line knows the window size but no percentage yet.
+    sl = run("ctx_statusline.py",
+             {"session_id": "s2", "model": {"display_name": "Opus"},
+              "context_window": {"used_percentage": None,
+                                 "context_window_size": 1_000_000}}, tmp_path)
+    assert "ctx --" in sl.stdout
+    path = _transcript(tmp_path, _assistant(630_000))
+    out = run("ctx_guard.py", {"session_id": "s2", "hook_event_name": "Stop",
+                               "transcript_path": str(path)}, tmp_path)
+    assert "Context 63%" in json.loads(out.stdout)["systemMessage"]
