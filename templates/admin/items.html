@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
   <p><a href="{{ root(request) }}admin">Back to the console</a></p>
-  <h1>Posts</h1>
-  <p><a href="{{ root(request) }}admin/posts/new">New post</a></p>
+  <h1>{{ title }}</h1>
+  <p><a href="{{ root(request) }}admin/{{ kind }}s/new">New {{ kind }}</a></p>
 
-  {% if posts %}
+  {% if items %}
   <table>
     <thead><tr><th>Title</th><th>Status</th><th>Author</th><th>Updated</th></tr></thead>
     <tbody>
-    {% for p in posts %}
-      <tr data-post-id="{{ p.id }}" data-slug="{{ p.slug }}">
+    {% for p in items %}
+      <tr data-{{ kind }}-id="{{ p.id }}" data-slug="{{ p.slug }}">
         <td>
           {% if can_change(account, p) %}
-            <a href="{{ root(request) }}admin/posts/{{ p.id }}">{{ p.title }}</a>
+            <a href="{{ root(request) }}admin/{{ kind }}s/{{ p.id }}">{{ p.title }}</a>
           {% else %}
             {{ p.title }}
           {% endif %}
@@ -25,6 +25,6 @@
     </tbody>
   </table>
   {% else %}
-    <p>No posts yet.</p>
+    <p>No {{ kind }}s yet.</p>
   {% endif %}
 {% endblock %}

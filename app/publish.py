@@ -1,8 +1,10 @@
 """The site update: render published content into site/ as plain HTML.
 
-render_site() writes the home page (published posts, newest first) and one
-file per published post under posts/. The console previews the same pages at
-/ through home_html() and post_html(), so it shows what readers will see. update_site() is what the console runs
+render_site() writes the home page (the Travel Lineup page if published, then
+published posts newest first), one file per published post under posts/ and
+one per published page under pages/. Every page carries a nav built from the
+published pages. The console previews the same pages at / through home_html()
+and item_html(), so it shows what readers will see. update_site() is what the console runs
 after any change to published content. `cms publish` calls render_site() from
 this module; T07 (ADR-004) adds the deploy to update_site() and decides how
 the CLI reaches it.
@@ -25,14 +27,23 @@ from app import content, settings
 from app.content import Item, Kind, Status
 from app.markdown import render_markdown
 
-CSS = """/* Minimal starter styles — make them yours. */
+CSS = """/* Phones first: one column, nothing wider than the screen. */
 :root { color-scheme: light dark; }
-body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 42rem; padding: 1rem; }
+body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 42rem;
+       padding: 1rem; overflow-wrap: anywhere; }
 header a { font-weight: 700; text-decoration: none; }
 header .console { float: right; font-weight: 400; }
+nav ul { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; list-style: none;
+         margin: 0.5rem 0 0; padding: 0; }
 main { margin-block: 2rem; }
+img, table, pre { max-width: 100%; }
+/* Wide tables and code scroll in their own box, not the page. */
+table, pre { display: block; overflow-x: auto; }
 .byline { color: GrayText; font-size: 0.9rem; }
+.lineup { border-bottom: 1px solid GrayText; margin-bottom: 1.5rem; }
 """
+
+TRAVEL_LINEUP = "travel-lineup"
 
 
 def byline(email: str) -> str:
@@ -59,44 +70,61 @@ def environment() -> Environment:
     return env
 
 
-def published_posts(db_path: Path) -> list[Item]:
+def published(db_path: Path, kind: Kind) -> list[Item]:
     """Newest first. A database that doesn't exist yet (a fresh clone) has none."""
     if not db_path.exists():
         return []
-    return content.list_items(db_path, Kind.POST, Status.PUBLISHED)
+    return content.list_items(db_path, kind, Status.PUBLISHED)
 
 
-def home_html(posts: list[Item], preview: bool = False) -> str:
-    """index.html: the published posts, newest first.
+def _render(template: str, prefix: str, nav_pages: list[Item], preview: bool,
+            **context) -> str:
+    """Render a public page that sits `prefix` ("" or "../") below the root.
+
+    Every link is built from `prefix`, so the paths stay relative. The nav
+    lists pages oldest first, in the order the Coach created them.
+    """
+    nav_pages = sorted(nav_pages, key=lambda p: (p.created_at, p.id))
+    return environment().get_template(template).render(
+        title=settings.SITE_TITLE, prefix=prefix, nav_pages=nav_pages,
+        css_path=f"{prefix}style.css", home_path=f"{prefix}index.html",
+        console_path=f"{prefix}admin" if preview else None, **context,
+    )
+
+
+def home_html(pages: list[Item], posts: list[Item], preview: bool = False) -> str:
+    """index.html: the Travel Lineup (if published), then posts newest first.
 
     A preview (the console's /) also links to the console; site/ never does.
     """
-    return environment().get_template("public/home.html").render(
-        title=settings.SITE_TITLE, posts=posts, css_path="style.css",
-        home_path="index.html", console_path="admin" if preview else None,
+    lineup = next((p for p in pages if p.slug == TRAVEL_LINEUP), None)
+    return _render(
+        "public/home.html", "", pages, preview, posts=posts, lineup=lineup,
+        lineup_body=render_markdown(lineup.body) if lineup else None,
     )
 
 
-def post_html(post: Item, preview: bool = False) -> str:
-    """posts/<slug>.html: one published post, its Markdown sanitized."""
-    return environment().get_template("public/post.html").render(
-        title=settings.SITE_TITLE, post=post, body=render_markdown(post.body),
-        css_path="../style.css", home_path="../index.html",
-        console_path="../admin" if preview else None,
-    )
+def item_html(item: Item, pages: list[Item], preview: bool = False) -> str:
+    """posts/<slug>.html or pages/<slug>.html, its Markdown sanitized."""
+    return _render("public/item.html", "../", pages, preview, item=item,
+                   body=render_markdown(item.body))
 
 
 def render_site(out: Path | None = None, db_path: Path | None = None) -> Path:
-    """Rebuild `out` from scratch with every published post in `db_path`."""
+    """Rebuild `out` from scratch with every published item in `db_path`."""
     out = out or settings.SITE
-    posts = published_posts(db_path or settings.DATABASE_PATH)
+    db_path = db_path or settings.DATABASE_PATH
+    pages = published(db_path, Kind.PAGE)
+    posts = published(db_path, Kind.POST)
     if out.exists():
         shutil.rmtree(out)
-    (out / "posts").mkdir(parents=True)
+    for kind in Kind:
+        (out / f"{kind}s").mkdir(parents=True)
     (out / "style.css").write_text(CSS)
-    (out / "index.html").write_text(home_html(posts))
-    for post in posts:
-        (out / "posts" / f"{post.slug}.html").write_text(post_html(post))
+    (out / "index.html").write_text(home_html(pages, posts))
+    for item in pages + posts:
+        (out / f"{item.kind}s" / f"{item.slug}.html").write_text(
+            item_html(item, pages))
     return out
 
 

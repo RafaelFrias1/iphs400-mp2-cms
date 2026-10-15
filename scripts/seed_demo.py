@@ -5,8 +5,8 @@
     uv run python scripts/seed_demo.py
 
 Creates one admin and one editor account (app/seed.py), with passwords read
-from CMS_ADMIN_PASSWORD and CMS_EDITOR_PASSWORD, never hard-coded. Later
-tickets add demo posts and pages here.
+from CMS_ADMIN_PASSWORD and CMS_EDITOR_PASSWORD, never hard-coded, then the
+three pages and a few posts (one a draft), and renders site/ from them.
 
 The rubric expects this to run clean on a fresh clone with .env.example values
 (item E4), because the database itself is never committed.
@@ -17,7 +17,8 @@ import os
 import sys
 
 from app import settings
-from app.seed import DEMO_EMAILS, seed_demo
+from app.publish import render_site
+from app.seed import DEMO_EMAILS, seed_demo, seed_demo_content
 
 
 def main() -> int:
@@ -32,7 +33,10 @@ def main() -> int:
     for role, email in DEMO_EMAILS.items():
         state = "created" if email in created else "already exists"
         print(f"{role:6}  {email}  ({state})")
+    added = seed_demo_content(settings.DATABASE_PATH)
+    print(f"Demo pages and posts added: {added}")
     print(f"Database: {settings.DATABASE_PATH}")
+    print(f"Site rendered to: {render_site()}")
     return 0
 
 

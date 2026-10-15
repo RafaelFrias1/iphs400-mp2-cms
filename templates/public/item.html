@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} · {{ title }}{% endblock %}
+{% block content %}
+  <article>
+    <h1>{{ item.title }}</h1>
+    <p class="byline">By {{ item.author_email | byline }}.
+      Published <time class="created" datetime="{{ item.created_at }}">{{ item.created_at | reader_date }}</time>,
+      updated <time class="updated" datetime="{{ item.updated_at }}">{{ item.updated_at | reader_date }}</time>.</p>
+    {{ body | safe }}
+  </article>
+  <p><a href="{{ home_path }}">Home</a></p>
+{% endblock %}

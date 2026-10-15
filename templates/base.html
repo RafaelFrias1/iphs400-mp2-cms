@@ -9,6 +9,11 @@
 <body>
   <header><a href="{{ home_path | default('index.html') }}">{{ title }}</a>
     {% if console_path %}<a class="console" href="{{ console_path }}">Console (log in)</a>{% endif %}
+    {% if nav_pages %}
+    <nav aria-label="Pages"><ul>
+      {% for page in nav_pages %}<li><a href="{{ prefix }}pages/{{ page.slug }}.html">{{ page.title }}</a></li>{% endfor %}
+    </ul></nav>
+    {% endif %}
   </header>
   <main>{% block content %}{% endblock %}</main>
   <footer><small>IPHS 400 Mini-Project #2</small></footer>
