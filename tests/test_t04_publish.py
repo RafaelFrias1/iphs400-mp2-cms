@@ -268,3 +268,14 @@ def test_console_does_not_serve_drafts(client_as, post_form, client):
     slug = slug_of(c, new_post(post_form, c, "Secret draft title"))
     assert client.get(f"/posts/{slug}.html").status_code == 404
     assert client.get("/posts/no-such-post.html").status_code == 404
+
+
+def test_console_preview_links_to_the_console_but_the_site_does_not(
+        client_as, post_form, client, db_path, tmp_path):
+    c = client_as("editor")
+    slug = slug_of(c, publish_new(post_form, c, "Practice schedule"))
+    assert 'href="admin"' in client.get("/").text
+    assert 'href="../admin"' in client.get(f"/posts/{slug}.html").text
+    assert client.get("/admin", follow_redirects=False).headers["location"] == "/login"
+    for f in render_site(tmp_path / "out", db_path).rglob("*.html"):
+        assert "admin" not in f.read_text(), f

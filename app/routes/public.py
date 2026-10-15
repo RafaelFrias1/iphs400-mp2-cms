@@ -3,6 +3,7 @@
 The pages come from the same code that writes site/ (app/publish.py), so the
 Coach sees exactly what readers will see once the site update has run. No
 login is needed, and drafts are never served: an unknown or draft slug is 404.
+Only this preview links to the console; the files in site/ never do.
 """
 from __future__ import annotations
 
@@ -18,14 +19,14 @@ router = APIRouter()
 @router.get("/index.html")
 def public_home(request: Request):
     return HTMLResponse(publish.home_html(
-        publish.published_posts(request.app.state.db_path)))
+        publish.published_posts(request.app.state.db_path), preview=True))
 
 
 @router.get("/posts/{slug}.html")
 def public_post(request: Request, slug: str):
     for post in publish.published_posts(request.app.state.db_path):
         if post.slug == slug:
-            return HTMLResponse(publish.post_html(post))
+            return HTMLResponse(publish.post_html(post, preview=True))
     raise HTTPException(status_code=404, detail="No such published post.")
 
 

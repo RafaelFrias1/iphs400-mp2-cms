@@ -29,6 +29,7 @@ CSS = """/* Minimal starter styles — make them yours. */
 :root { color-scheme: light dark; }
 body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 42rem; padding: 1rem; }
 header a { font-weight: 700; text-decoration: none; }
+header .console { float: right; font-weight: 400; }
 main { margin-block: 2rem; }
 .byline { color: GrayText; font-size: 0.9rem; }
 """
@@ -65,19 +66,23 @@ def published_posts(db_path: Path) -> list[Item]:
     return content.list_items(db_path, Kind.POST, Status.PUBLISHED)
 
 
-def home_html(posts: list[Item]) -> str:
-    """index.html: the published posts, newest first."""
+def home_html(posts: list[Item], preview: bool = False) -> str:
+    """index.html: the published posts, newest first.
+
+    A preview (the console's /) also links to the console; site/ never does.
+    """
     return environment().get_template("public/home.html").render(
         title=settings.SITE_TITLE, posts=posts, css_path="style.css",
-        home_path="index.html",
+        home_path="index.html", console_path="admin" if preview else None,
     )
 
 
-def post_html(post: Item) -> str:
+def post_html(post: Item, preview: bool = False) -> str:
     """posts/<slug>.html: one published post, its Markdown sanitized."""
     return environment().get_template("public/post.html").render(
         title=settings.SITE_TITLE, post=post, body=render_markdown(post.body),
         css_path="../style.css", home_path="../index.html",
+        console_path="../admin" if preview else None,
     )
 
 
