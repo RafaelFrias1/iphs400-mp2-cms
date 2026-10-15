@@ -117,6 +117,31 @@ def list_items(db_path: Path, kind: Kind,
     return [_from_row(row) for row in rows]
 
 
+def find_items(db_path: Path, kind: Kind | None = None,
+               status: Status | None = None,
+               author_id: int | None = None) -> list[Item]:
+    """The console's content list: newest updated first; filters combine,
+    and each applies only when given."""
+    with db.connect(db_path) as conn:
+        rows = conn.execute(
+            _SELECT + "WHERE kind = COALESCE(?, kind)"
+            " AND status = COALESCE(?, status)"
+            " AND author_id = COALESCE(?, author_id)"
+            " ORDER BY updated_at DESC, items.id DESC",
+            (kind, status, author_id)).fetchall()
+    return [_from_row(row) for row in rows]
+
+
+def count_items(db_path: Path) -> dict[tuple[Kind, Status], int]:
+    """How many items of each kind and status, zero included."""
+    counts = {(kind, status): 0 for kind in Kind for status in Status}
+    with db.connect(db_path) as conn:
+        for row in conn.execute("SELECT kind, status, COUNT(*) AS n FROM items"
+                                " GROUP BY kind, status"):
+            counts[Kind(row["kind"]), Status(row["status"])] = row["n"]
+    return counts
+
+
 def update_item(db_path: Path, item_id: int, title: str, body: str,
                 slug: str | None = None, status: Status | None = None) -> None:
     """Change title and body; change the slug and status too when given.

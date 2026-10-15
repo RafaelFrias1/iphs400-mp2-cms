@@ -23,6 +23,7 @@ from app import content, publish
 from app.accounts import Account
 from app.content import Item, Kind, Status
 from app.markdown import render_markdown
+from app.routes.console import content_list
 from app.web import current_account, require_admin, templates, verify_csrf
 
 
@@ -69,13 +70,11 @@ def item_router(kind: Kind) -> APIRouter:
         return RedirectResponse(f"{base}/{item_id}", status_code=303)
 
     @router.get("")
-    def item_list(request: Request, me: Account = Depends(current_account)):
-        return templates.TemplateResponse(
-            request, "admin/items.html",
-            {"title": f"{kind.capitalize()}s", "account": me, "kind": kind,
-             "can_change": content.can_change,
-             "items": content.list_items(request.app.state.db_path, kind)},
-        )
+    def item_list(request: Request, me: Account = Depends(current_account),
+                  status: str = "", author: str = ""):
+        """The one content list, with this kind already chosen."""
+        return content_list(request, me, status=status, kind=kind,
+                            author=author)
 
     @router.get("/new")
     def new_item_form(request: Request, me: Account = Depends(current_account)):

@@ -71,6 +71,10 @@ _Avoid_: scores, standings (as separate concepts)
 **Tournament recap**:
 A short post written after a tournament describing how the team did. Text only.
 
+**Content list**:
+The console's one list of every item, posts and pages together, with a single filter bar (status, kind, author). The dashboard's counts link into it.
+_Avoid_: posts list, pages list (as separate screens)
+
 ## Publishing
 
 **Draft**:

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Dashboard</h1>
+  {# tests/test_t00.py expects "hello admin" here for an admin. #}
+  <p>Hello {{ account.role }}. You are logged in as {{ account.email }}.</p>
+
+  <table class="counts">
+    <thead><tr><th></th>{% for s in statuses %}<th>{{ s | capitalize }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for k in kinds %}
+      <tr><th>{{ k | capitalize }}s</th>
+        {% for s in statuses %}
+          <td><a href="{{ root(request) }}admin/content?status={{ s }}&amp;kind={{ k }}" data-count="{{ k }}-{{ s }}">{{ counts[(k, s)] }}</a></td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a href="{{ root(request) }}admin/content">All content</a>
+    · <a href="{{ root(request) }}admin/posts/new">New post</a>
+    {% if account.is_admin %}
+    · <a href="{{ root(request) }}admin/pages/new">New page</a>
+    · <a href="{{ root(request) }}admin/accounts">Accounts</a>
+    {% endif %}</p>
+  <form method="post" action="{{ root(request) }}logout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button type="submit">Log out</button>
+  </form>
+{% endblock %}

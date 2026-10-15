@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+  <p><a href="{{ root(request) }}admin">Back to the dashboard</a></p>
+  <h1>Content</h1>
+  <p><a href="{{ root(request) }}admin/posts/new">New post</a>
+    {% if account.is_admin %}· <a href="{{ root(request) }}admin/pages/new">New page</a>{% endif %}</p>
+
+  <form method="get" action="{{ root(request) }}admin/content" class="filters">
+    <label>Status
+      <select name="status">
+        <option value="">Any</option>
+        {% for s in statuses %}<option value="{{ s }}"{% if s == chosen.status %} selected{% endif %}>{{ s | capitalize }}</option>{% endfor %}
+      </select></label>
+    <label>Kind
+      <select name="kind">
+        <option value="">Posts and pages</option>
+        {% for k in kinds %}<option value="{{ k }}"{% if k == chosen.kind %} selected{% endif %}>{{ k | capitalize }}s</option>{% endfor %}
+      </select></label>
+    <label>Author
+      <select name="author">
+        <option value="">Anyone</option>
+        {% for a in authors %}<option value="{{ a.id }}"{% if a.id | string == chosen.author %} selected{% endif %}>{{ a.email }}</option>{% endfor %}
+      </select></label>
+    <button type="submit">Filter</button>
+  </form>
+
+  {% if items %}
+  <table>
+    <thead><tr><th>Title</th><th>Kind</th><th>Status</th><th>Author</th><th>Updated</th></tr></thead>
+    <tbody>
+    {% for p in items %}
+      <tr data-{{ p.kind }}-id="{{ p.id }}" data-slug="{{ p.slug }}">
+        <td>
+          {% if can_change(account, p) %}
+            <a href="{{ root(request) }}admin/{{ p.kind }}s/{{ p.id }}">{{ p.title }}</a>
+          {% else %}
+            {{ p.title }}
+          {% endif %}
+        </td>
+        <td>{{ p.kind | capitalize }}</td>
+        <td>{{ p.status | capitalize }}</td>
+        <td>{{ p.author_email }}</td>
+        <td><time datetime="{{ p.updated_at }}">{{ p.updated_at | when }}</time></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>Nothing matches these filters.</p>
+  {% endif %}
+{% endblock %}

@@ -73,7 +73,7 @@ def test_a_post_needs_a_title_and_the_form_keeps_the_body(client_as, post_form):
 
 
 def test_console_links_to_posts(client_as):
-    assert 'href="admin/posts"' in client_as("editor").get("/admin").text
+    assert 'href="admin/posts/new"' in client_as("editor").get("/admin").text
 
 
 # --- slugs -------------------------------------------------------------------
