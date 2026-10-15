@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+  <p><a href="{{ root(request) }}admin">Back to the console</a></p>
+  <h1>Posts</h1>
+  <p><a href="{{ root(request) }}admin/posts/new">New post</a></p>
+
+  {% if posts %}
+  <table>
+    <thead><tr><th>Title</th><th>Status</th><th>Author</th><th>Updated</th></tr></thead>
+    <tbody>
+    {% for p in posts %}
+      <tr data-post-id="{{ p.id }}" data-slug="{{ p.slug }}">
+        <td>
+          {% if can_change(account, p) %}
+            <a href="{{ root(request) }}admin/posts/{{ p.id }}">{{ p.title }}</a>
+          {% else %}
+            {{ p.title }}
+          {% endif %}
+        </td>
+        <td>{{ p.status | capitalize }}</td>
+        <td>{{ p.author_email }}</td>
+        <td><time datetime="{{ p.updated_at }}">{{ p.updated_at | when }}</time></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No posts yet.</p>
+  {% endif %}
+{% endblock %}

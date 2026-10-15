@@ -58,19 +58,28 @@ def client(db_path) -> TestClient:
 
 
 @pytest.fixture
-def client_as(db_path, csrf):
+def login_as(db_path, csrf):
+    """Return a factory: login_as(email, password) -> a logged-in TestClient."""
+
+    def _login(email: str, password: str) -> TestClient:
+        c = TestClient(create_app(db_path=db_path))
+        response = c.post("/login", data={"email": email, "password": password,
+                                          "csrf_token": csrf(c, "/login")},
+                          follow_redirects=False)
+        assert response.status_code in (302, 303), (
+            f"Login as {email} failed with {response.status_code}")
+        return c
+
+    return _login
+
+
+@pytest.fixture
+def client_as(login_as):
     """Return a factory: client_as("editor") -> a logged-in TestClient."""
 
     def _login(role: str) -> TestClient:
         account = DEMO_ACCOUNTS[role]
-        c = TestClient(create_app(db_path=db_path))
-        response = c.post("/login", data={"email": account["email"],
-                                          "password": account["password"],
-                                          "csrf_token": csrf(c, "/login")},
-                          follow_redirects=False)
-        assert response.status_code in (302, 303), (
-            f"Login as {role} failed with {response.status_code}")
-        return c
+        return login_as(account["email"], account["password"])
 
     return _login
 

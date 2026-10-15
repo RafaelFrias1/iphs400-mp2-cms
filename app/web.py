@@ -46,8 +46,14 @@ def root(request: Request) -> str:
     return "../" * (request.url.path.count("/") - 1)
 
 
+def when(timestamp: str) -> str:
+    """An ISO UTC timestamp as the console shows it: '2026-10-14 18:05 UTC'."""
+    return f"{timestamp[:16].replace('T', ' ')} UTC"
+
+
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals["root"] = root
+templates.env.filters["when"] = when
 
 
 def verify_csrf(request: Request, csrf_token: str = Form("")) -> None:

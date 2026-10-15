@@ -40,6 +40,10 @@ _Avoid_: visitor, user
 
 ## Content
 
+**Item**:
+A post or a page. They share one shape: title, slug, Markdown body, status, author and timestamps.
+_Avoid_: entry, content (as a count noun)
+
 **Page**:
 Long-lived content edited in place that appears in the public navigation, e.g. Season Schedule, Travel Lineup, Recruiting.
 

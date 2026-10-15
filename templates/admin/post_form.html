@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+  <p><a href="{{ root(request) }}admin/posts">Back to posts</a></p>
+  <h1>{{ "Edit post" if item else "New post" }}</h1>
+  {% if error %}<p role="alert"><strong>{{ error }}</strong></p>{% endif %}
+
+  {% if item %}
+    <p>{{ item.status | capitalize }} by {{ item.author_email }}.
+      Created <time class="created" datetime="{{ item.created_at }}">{{ item.created_at | when }}</time>,
+      updated <time class="updated" datetime="{{ item.updated_at }}">{{ item.updated_at | when }}</time>.</p>
+  {% endif %}
+
+  <form method="post" action="{{ root(request) }}admin/posts{% if item %}/{{ item.id }}{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <p><label>Title<br><input type="text" name="title" value="{{ post_title }}" required></label></p>
+    {% if item and account.is_admin %}
+      <p><label>Slug<br><input type="text" name="slug" value="{{ slug }}" required></label></p>
+    {% endif %}
+    <p><label>Body (Markdown)<br><textarea name="body" rows="16" cols="60">{{ body }}</textarea></label></p>
+    <p>
+      <button type="submit" name="action" value="preview">Preview</button>
+      <button type="submit" name="action" value="save">Save draft</button>
+    </p>
+  </form>
+
+  {% if preview is not none %}
+    <h2>Preview</h2>
+    <section class="preview">{{ preview | safe }}</section>
+  {% endif %}
+
+  {% if item %}
+    <form method="post" action="{{ root(request) }}admin/posts/{{ item.id }}/delete">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <button type="submit">Delete post</button>
+    </form>
+  {% endif %}
+{% endblock %}

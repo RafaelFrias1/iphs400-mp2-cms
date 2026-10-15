@@ -18,6 +18,21 @@ CREATE TABLE IF NOT EXISTS accounts (
     role          TEXT    NOT NULL CHECK (role IN ('admin', 'editor')),
     active        INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
 );
+
+-- Posts and pages share one table; kind drives navigation and permissions.
+-- Timestamps are ISO 8601 UTC strings, so they sort as text.
+CREATE TABLE IF NOT EXISTS items (
+    id         INTEGER PRIMARY KEY,
+    kind       TEXT    NOT NULL CHECK (kind IN ('post', 'page')),
+    title      TEXT    NOT NULL,
+    slug       TEXT    NOT NULL UNIQUE,
+    body       TEXT    NOT NULL DEFAULT '',
+    status     TEXT    NOT NULL DEFAULT 'draft'
+                       CHECK (status IN ('draft', 'published')),
+    author_id  INTEGER NOT NULL REFERENCES accounts (id),
+    created_at TEXT    NOT NULL,
+    updated_at TEXT    NOT NULL
+);
 """
 
 

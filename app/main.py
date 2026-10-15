@@ -13,7 +13,7 @@ from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import db, settings
-from app.routes import accounts, auth, console
+from app.routes import accounts, auth, console, posts
 from app.web import LoginRequired, templates
 
 
@@ -41,6 +41,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(console.router)
     app.include_router(accounts.router)
+    app.include_router(posts.router)
     return app
 
 
