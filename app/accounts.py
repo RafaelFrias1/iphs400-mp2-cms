@@ -5,7 +5,9 @@ never deleted, only deactivated; a deactivated account cannot log in.
 """
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass
+from enum import StrEnum
 from functools import cache
 from pathlib import Path
 
@@ -14,21 +16,34 @@ from argon2.exceptions import InvalidHashError, VerificationError
 
 from app import db
 
-ROLES = ("admin", "editor")
+MIN_PASSWORD_LENGTH = 8
 
 _hasher = PasswordHasher()
+
+
+class Role(StrEnum):
+    ADMIN = "admin"
+    EDITOR = "editor"
+
+
+class EmailTaken(Exception):
+    """Raised when creating an account whose email already has one."""
 
 
 @dataclass(frozen=True)
 class Account:
     id: int
     email: str
-    role: str
+    role: Role
     active: bool
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role is Role.ADMIN
 
 
 def _from_row(row) -> Account:
-    return Account(id=row["id"], email=row["email"], role=row["role"],
+    return Account(id=row["id"], email=row["email"], role=Role(row["role"]),
                    active=bool(row["active"]))
 
 
@@ -36,15 +51,22 @@ def _normalize(email: str) -> str:
     return email.strip().lower()
 
 
-def create_account(db_path: Path, email: str, password: str, role: str) -> Account:
-    if role not in ROLES:
-        raise ValueError(f"Unknown role: {role!r}")
-    with db.connect(db_path) as conn:
-        cursor = conn.execute(
-            "INSERT INTO accounts (email, password_hash, role) VALUES (?, ?, ?)",
-            (_normalize(email), _hasher.hash(password), role),
-        )
+def create_account(db_path: Path, email: str, password: str, role: Role) -> Account:
+    try:
+        with db.connect(db_path) as conn:
+            cursor = conn.execute(
+                "INSERT INTO accounts (email, password_hash, role) VALUES (?, ?, ?)",
+                (_normalize(email), _hasher.hash(password), role),
+            )
+    except sqlite3.IntegrityError as exc:
+        raise EmailTaken(email) from exc
     return get_account(db_path, cursor.lastrowid)
+
+
+def list_accounts(db_path: Path) -> list[Account]:
+    with db.connect(db_path) as conn:
+        rows = conn.execute("SELECT * FROM accounts ORDER BY email").fetchall()
+    return [_from_row(row) for row in rows]
 
 
 def get_account(db_path: Path, account_id: int) -> Account | None:
@@ -65,7 +87,14 @@ def find_by_email(db_path: Path, email: str) -> Account | None:
     return _from_row(row) if row else None
 
 
+def set_role(db_path: Path, account_id: int, role: Role) -> None:
+    with db.connect(db_path) as conn:
+        conn.execute("UPDATE accounts SET role = ? WHERE id = ?",
+                     (role, account_id))
+
+
 def set_active(db_path: Path, account_id: int, active: bool) -> None:
+    """Deactivate (False) or reactivate (True). Accounts are never deleted."""
     with db.connect(db_path) as conn:
         conn.execute("UPDATE accounts SET active = ? WHERE id = ?",
                      (int(active), account_id))

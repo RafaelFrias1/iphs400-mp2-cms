@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+  <p><a href="{{ root(request) }}admin">Back to the console</a></p>
+  <h1>Accounts</h1>
+  {% if error %}<p role="alert"><strong>{{ error }}</strong></p>{% endif %}
+
+  <table>
+    <thead><tr><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in accounts %}
+      <tr data-account-id="{{ a.id }}" data-email="{{ a.email }}">
+        <td>{{ a.email }}{% if a.id == account.id %} (you){% endif %}</td>
+        <td>
+          {% if a.id == account.id %}
+            {{ a.role }}
+          {% else %}
+            <form method="post" action="{{ root(request) }}admin/accounts/{{ a.id }}/role">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+              <select name="role" aria-label="Role for {{ a.email }}">
+                {% for r in roles %}<option value="{{ r }}"{% if r == a.role %} selected{% endif %}>{{ r }}</option>{% endfor %}
+              </select>
+              <button type="submit">Change role</button>
+            </form>
+          {% endif %}
+        </td>
+        <td>{{ "Active" if a.active else "Deactivated" }}</td>
+        <td>
+          {% if a.id != account.id %}
+            <form method="post" action="{{ root(request) }}admin/accounts/{{ a.id }}/active">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+              <input type="hidden" name="active" value="{{ '0' if a.active else '1' }}">
+              <button type="submit">{{ "Deactivate" if a.active else "Reactivate" }}</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>New account</h2>
+  <form method="post" action="{{ root(request) }}admin/accounts">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <p><label>Email<br><input type="email" name="email" value="{{ email }}" required></label></p>
+    <p><label>Initial password<br><input type="password" name="password" minlength="{{ min_password_length }}" required autocomplete="new-password"></label></p>
+    <p><label>Role<br>
+      <select name="role">
+        {% for r in roles %}<option value="{{ r }}"{% if r == role %} selected{% endif %}>{{ r }}</option>{% endfor %}
+      </select></label></p>
+    <p><button type="submit">Create account</button></p>
+  </form>
+{% endblock %}

@@ -2,7 +2,8 @@
 {% block content %}
   <h1>T00: hello admin</h1>
   <p>Logged in as {{ account.email }} ({{ account.role }}).</p>
-  <form method="post" action="../logout">
+  {% if account.is_admin %}<p><a href="{{ root(request) }}admin/accounts">Accounts</a></p>{% endif %}
+  <form method="post" action="{{ root(request) }}logout">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <button type="submit">Log out</button>
   </form>

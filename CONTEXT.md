@@ -24,7 +24,7 @@ The person who built and maintains the CMS. Holds a backup **admin** account in 
 _Avoid_: developer, IT
 
 **Admin**:
-The role with full permissions: all pages, all posts, and managing accounts.
+The role with full permissions: all pages, all posts, and managing accounts. An admin can't deactivate their own account or change their own role, so the site always keeps an admin.
 
 **Deactivated**:
 The state of an account whose person has left (e.g. a graduated Captain). It can no longer log in; it is never deleted.

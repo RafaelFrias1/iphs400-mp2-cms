@@ -8,7 +8,7 @@ import sys
 
 from fastapi.testclient import TestClient
 
-from app import accounts, settings
+from app import settings
 from app.main import create_app
 from conftest import DEMO_ACCOUNTS
 
@@ -49,20 +49,23 @@ def test_failed_login_keeps_the_email_but_not_the_password(client, csrf):
     assert "secret-guess" not in response.text
 
 
-def test_deactivated_account_is_refused_with_the_right_password(client, csrf,
-                                                                db_path):
-    account = accounts.create_account(db_path, "old-captain@example.test",
-                                      "right-pw", "editor")
-    accounts.set_active(db_path, account.id, False)
-    response = login(client, csrf, "old-captain@example.test", "right-pw")
+def test_deactivated_account_is_refused_with_the_right_password(
+        client, client_as, csrf, account_id, new_account, post_form):
+    new_account("old-captain@example.test", "right-password")
+    admin = client_as("admin")
+    target = account_id(admin, "old-captain@example.test")
+    post_form(admin, f"/admin/accounts/{target}/active", active="0")
+    response = login(client, csrf, "old-captain@example.test", "right-password")
     assert response.status_code == 401
     assert GENERIC_ERROR in response.text
 
 
-def test_deactivating_a_logged_in_account_ends_its_session(client_as, db_path):
+def test_deactivating_a_logged_in_account_ends_its_session(client_as, post_form,
+                                                          account_id):
     c = client_as("editor")
-    editor = accounts.find_by_email(db_path, DEMO_ACCOUNTS["editor"]["email"])
-    accounts.set_active(db_path, editor.id, False)
+    admin = client_as("admin")
+    target = account_id(admin, DEMO_ACCOUNTS["editor"]["email"])
+    post_form(admin, f"/admin/accounts/{target}/active", active="0")
     response = c.get("/admin", follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"] == "/login"

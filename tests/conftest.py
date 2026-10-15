@@ -16,6 +16,7 @@ import re
 import pytest
 from fastapi.testclient import TestClient
 
+from app.accounts import Role
 from app.main import create_app
 from app.seed import DEMO_EMAILS, seed_demo
 
@@ -27,6 +28,7 @@ DEMO_ACCOUNTS = {
 }
 
 CSRF_FIELD = re.compile(r'name="csrf_token" value="([^"]+)"')
+ACCOUNT_ROW = r'data-account-id="(\d+)" data-email="{email}"'
 
 
 @pytest.fixture
@@ -71,3 +73,48 @@ def client_as(db_path, csrf):
         return c
 
     return _login
+
+
+@pytest.fixture
+def post_form(csrf):
+    """Return a helper: post_form(client, path, **fields) -> the response.
+
+    Adds the session's CSRF token, as a real console form would.
+    """
+
+    def _post(c: TestClient, path: str, **fields: str):
+        fields["csrf_token"] = csrf(c, "/admin")
+        return c.post(path, data=fields, follow_redirects=False)
+
+    return _post
+
+
+@pytest.fixture
+def account_id():
+    """Return a helper: account_id(admin_client, email) -> the id the console shows."""
+
+    def _find(c: TestClient, email: str) -> int:
+        match = re.search(ACCOUNT_ROW.format(email=re.escape(email)),
+                          c.get("/admin/accounts").text)
+        assert match, f"No account row for {email}"
+        return int(match.group(1))
+
+    return _find
+
+
+@pytest.fixture
+def new_account(client_as, post_form):
+    """Return a helper: new_account(email, password, role) creates it as the admin.
+
+    Goes through the admin's account-management route, like the Coach would.
+    """
+    admin = None
+
+    def _create(email: str, password: str, role: Role = Role.EDITOR) -> None:
+        nonlocal admin
+        admin = admin or client_as("admin")
+        response = post_form(admin, "/admin/accounts", email=email,
+                             password=password, role=role)
+        assert response.status_code == 303, response.text
+
+    return _create
