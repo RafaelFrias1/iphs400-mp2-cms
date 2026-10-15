@@ -1,8 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
   <h1>{{ title }}</h1>
-  {% if items %}
-    <ul>{% for item in items %}<li><a href="{{ item.href }}">{{ item.title }}</a></li>{% endfor %}</ul>
+  {% if posts %}
+    {% for post in posts %}
+      <article>
+        <h2><a href="posts/{{ post.slug }}.html">{{ post.title }}</a></h2>
+        <p class="byline">By {{ post.author_email | byline }},
+          <time datetime="{{ post.created_at }}">{{ post.created_at | reader_date }}</time></p>
+      </article>
+    {% endfor %}
   {% else %}
     <p>Nothing published yet.</p>
   {% endif %}

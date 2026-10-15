@@ -19,9 +19,21 @@
     <p><label>Body (Markdown)<br><textarea name="body" rows="16" cols="60">{{ body }}</textarea></label></p>
     <p>
       <button type="submit" name="action" value="preview">Preview</button>
-      <button type="submit" name="action" value="save">Save draft</button>
+      {% if item and item.status == "published" %}
+        <button type="submit" name="action" value="save">Save changes</button>
+      {% else %}
+        <button type="submit" name="action" value="save">Save draft</button>
+        <button type="submit" name="action" value="publish">Publish</button>
+      {% endif %}
     </p>
   </form>
+
+  {% if item and item.status == "published" %}
+    <form method="post" action="{{ root(request) }}admin/posts/{{ item.id }}/unpublish">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <button type="submit">Unpublish (back to draft)</button>
+    </form>
+  {% endif %}
 
   {% if preview is not none %}
     <h2>Preview</h2>

@@ -89,14 +89,14 @@ def _unique_slug(conn: sqlite3.Connection, title: str, kind: Kind) -> str:
 
 
 def create_item(db_path: Path, kind: Kind, title: str, body: str,
-                author: Account) -> Item:
+                author: Account, status: Status = Status.DRAFT) -> Item:
     now = _now()
     with db.connect(db_path) as conn:
         cursor = conn.execute(
-            "INSERT INTO items (kind, title, slug, body, author_id, created_at,"
-            " updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (kind, title, _unique_slug(conn, title, kind), body, author.id, now,
-             now),
+            "INSERT INTO items (kind, title, slug, body, status, author_id,"
+            " created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (kind, title, _unique_slug(conn, title, kind), body, status,
+             author.id, now, now),
         )
     return get_item(db_path, cursor.lastrowid)
 
@@ -107,17 +107,19 @@ def get_item(db_path: Path, item_id: int) -> Item | None:
     return _from_row(row) if row else None
 
 
-def list_items(db_path: Path, kind: Kind) -> list[Item]:
-    """Newest first."""
+def list_items(db_path: Path, kind: Kind,
+               status: Status | None = None) -> list[Item]:
+    """Newest first; only items with `status` when one is given."""
     with db.connect(db_path) as conn:
-        rows = conn.execute(_SELECT + "WHERE kind = ? ORDER BY created_at DESC,"
-                            " items.id DESC", (kind,)).fetchall()
+        rows = conn.execute(
+            _SELECT + "WHERE kind = ? AND status = COALESCE(?, status)"
+            " ORDER BY created_at DESC, items.id DESC", (kind, status)).fetchall()
     return [_from_row(row) for row in rows]
 
 
 def update_item(db_path: Path, item_id: int, title: str, body: str,
-                slug: str | None = None) -> None:
-    """Change title and body; change the slug too when one is given.
+                slug: str | None = None, status: Status | None = None) -> None:
+    """Change title and body; change the slug and status too when given.
 
     Raises SlugTaken if the new slug belongs to another item.
     """
@@ -125,11 +127,17 @@ def update_item(db_path: Path, item_id: int, title: str, body: str,
         with db.connect(db_path) as conn:
             conn.execute(
                 "UPDATE items SET title = ?, body = ?, slug = COALESCE(?, slug),"
-                " updated_at = ? WHERE id = ?",
-                (title, body, slug, _now(), item_id),
+                " status = COALESCE(?, status), updated_at = ? WHERE id = ?",
+                (title, body, slug, status, _now(), item_id),
             )
     except sqlite3.IntegrityError as exc:
         raise SlugTaken(slug) from exc
+
+
+def set_status(db_path: Path, item_id: int, status: Status) -> None:
+    with db.connect(db_path) as conn:
+        conn.execute("UPDATE items SET status = ?, updated_at = ? WHERE id = ?",
+                     (status, _now(), item_id))
 
 
 def delete_item(db_path: Path, item_id: int) -> None:

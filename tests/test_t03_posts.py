@@ -286,14 +286,14 @@ def test_preview_of_an_existing_post_does_not_change_it(client_as, post_form):
 
 # --- drafts stay private -----------------------------------------------------
 
-def test_drafts_never_reach_the_public_site(client_as, post_form, client, tmp_path):
-    """Until T04, render_site() reads no content at all, so this guards the
-    rule rather than proving it; T04 adds published posts beside the draft."""
+def test_drafts_never_reach_the_public_site(client_as, post_form, client, db_path,
+                                            tmp_path):
+    """T04's test_drafts_never_reach_the_output adds a published post beside it."""
     from app.publish import render_site
 
     new_post(post_form, client_as("editor"), "Secret draft title", "secret body")
     assert "Secret draft title" not in client.get("/").text
-    out = render_site(tmp_path / "site")
+    out = render_site(tmp_path / "site", db_path)
     for f in out.rglob("*"):
         if f.is_file():
             text = f.read_text()

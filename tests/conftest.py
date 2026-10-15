@@ -41,6 +41,12 @@ def db_path(tmp_path):
 
 
 @pytest.fixture
+def site_dir(tmp_path):
+    """Where the console's site updates write in tests, never the real site/."""
+    return tmp_path / "site"
+
+
+@pytest.fixture
 def csrf():
     """Return a helper: csrf(client, "/login") -> the CSRF token on that page."""
 
@@ -53,16 +59,16 @@ def csrf():
 
 
 @pytest.fixture
-def client(db_path) -> TestClient:
-    return TestClient(create_app(db_path=db_path))
+def client(db_path, site_dir) -> TestClient:
+    return TestClient(create_app(db_path=db_path, site_dir=site_dir))
 
 
 @pytest.fixture
-def login_as(db_path, csrf):
+def login_as(db_path, site_dir, csrf):
     """Return a factory: login_as(email, password) -> a logged-in TestClient."""
 
     def _login(email: str, password: str) -> TestClient:
-        c = TestClient(create_app(db_path=db_path))
+        c = TestClient(create_app(db_path=db_path, site_dir=site_dir))
         response = c.post("/login", data={"email": email, "password": password,
                                           "csrf_token": csrf(c, "/login")},
                           follow_redirects=False)
