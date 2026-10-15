@@ -4,16 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ title }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ css_path | default('style.css') }}">
+  {# The public site passes css_path and home_path; console pages build them
+     from root(request), so they stay relative at any depth under /admin. #}
+  <link rel="stylesheet" href="{% if css_path is defined %}{{ css_path }}{% else %}{{ root(request) }}style.css{% endif %}">
 </head>
 <body>
-  <header><a href="{{ home_path | default('index.html') }}">{{ title }}</a>
+  <header><a href="{% if home_path is defined %}{{ home_path }}{% else %}{{ root(request) }}index.html{% endif %}">{{ title }}</a>
     {% if console_path %}<a class="console" href="{{ console_path }}">Console (log in)</a>{% endif %}
     {% if nav_pages %}
     <nav aria-label="Pages"><ul>
       {% for page in nav_pages %}<li><a href="{{ prefix }}pages/{{ page.slug }}.html">{{ page.title }}</a></li>{% endfor %}
     </ul></nav>
     {% endif %}
+    {% if account is defined and account %}{% include "admin/_nav.html" %}{% endif %}
   </header>
   <main>{% block content %}{% endblock %}</main>
   <footer><small>IPHS 400 Mini-Project #2</small></footer>

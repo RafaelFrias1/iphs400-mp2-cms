@@ -3,6 +3,7 @@
   <p><a href="{{ root(request) }}admin/{{ kind }}s">Back to {{ kind }}s</a></p>
   <h1>{{ "Edit" if item else "New" }} {{ kind }}</h1>
   {% if error %}<p role="alert"><strong>{{ error }}</strong></p>{% endif %}
+  {% if saved %}<p role="status">{{ saved }}</p>{% endif %}
 
   {% if item %}
     <p>{{ item.status | capitalize }} by {{ item.author_email }}.

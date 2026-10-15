@@ -17,14 +17,4 @@
     </tbody>
   </table>
 
-  <p><a href="{{ root(request) }}admin/content">All content</a>
-    · <a href="{{ root(request) }}admin/posts/new">New post</a>
-    {% if account.is_admin %}
-    · <a href="{{ root(request) }}admin/pages/new">New page</a>
-    · <a href="{{ root(request) }}admin/accounts">Accounts</a>
-    {% endif %}</p>
-  <form method="post" action="{{ root(request) }}logout">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <button type="submit">Log out</button>
-  </form>
 {% endblock %}

@@ -47,6 +47,11 @@ img, table, pre { max-width: 100%; }
 table, pre { display: block; overflow-x: auto; }
 .byline { color: GrayText; font-size: 0.9rem; }
 .lineup { border-bottom: 1px solid GrayText; margin-bottom: 1.5rem; }
+/* The console shares this file: form fields never run off a phone. */
+textarea, input, select { max-width: 100%; box-sizing: border-box; }
+textarea { width: 100%; }
+nav form { display: inline; }
+[role="status"] { border-left: 4px solid GrayText; padding-left: 0.5rem; }
 """
 
 TRAVEL_LINEUP = "travel-lineup"

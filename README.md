@@ -16,11 +16,11 @@ Needs Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 ```bash
 uv sync
 cp .env.example .env                       # then change the passwords if you like
-set -a; . ./.env; set +a                   # load .env (it is not read automatically)
 uv run python scripts/seed_demo.py         # demo accounts, 3 pages, a few posts
 uv run cms serve                           # http://localhost:8000
 ```
 
+The app reads `.env` itself; variables already set in your shell win.
 Open http://localhost:8000/login and log in with a demo account. The password
 is the one in `.env`.
 

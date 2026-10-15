@@ -1,0 +1,14 @@
+{# The console's one nav, on every screen once logged in (base.html). #}
+<nav aria-label="Console"><ul>
+  <li><a href="{{ root(request) }}admin">Dashboard</a></li>
+  <li><a href="{{ root(request) }}admin/content">Content</a></li>
+  <li><a href="{{ root(request) }}admin/posts/new">New post</a></li>
+  {% if account.is_admin %}
+  <li><a href="{{ root(request) }}admin/pages/new">New page</a></li>
+  <li><a href="{{ root(request) }}admin/accounts">Accounts</a></li>
+  {% endif %}
+  <li><form method="post" action="{{ root(request) }}logout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button type="submit">Log out</button>
+  </form></li>
+</ul></nav>

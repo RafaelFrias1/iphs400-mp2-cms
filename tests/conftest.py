@@ -12,8 +12,13 @@ accounts seeded, so tests never touch your real cms.db. Every app gets the
 """
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
+
+# Before any app import: settings must not read the developer's own .env
+# (its CMS_DEPLOY=on would make tests push to GitHub).
+os.environ["CMS_ENV_FILE"] = ""
 
 import pytest
 from fastapi.testclient import TestClient

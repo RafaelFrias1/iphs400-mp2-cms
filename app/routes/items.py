@@ -55,6 +55,15 @@ def _change(request: Request, change: Callable[[db.Source], T],
     return change(state.db_path)
 
 
+def _saved_message(action: str, before: Status | None, after: Status) -> str:
+    """What the item's page says after a successful save."""
+    if after is Status.DRAFT:
+        return "Saved as a draft."
+    if action == "publish" and before is not Status.PUBLISHED:
+        return "Published."
+    return "Changes saved and published."
+
+
 def _status_after(action: str, current: Status) -> Status:
     """Publish publishes; Save keeps the item's current status."""
     return Status.PUBLISHED if action == "publish" else current
@@ -67,13 +76,13 @@ def item_router(kind: Kind) -> APIRouter:
     router = APIRouter(prefix=base, dependencies=[Depends(guard)])
 
     def _form(request: Request, me: Account, *, item: Item | None, title: str,
-              body: str, slug: str, error: str = "", preview: bool = False,
-              status_code: int = 200):
+              body: str, slug: str, error: str = "", saved: str = "",
+              preview: bool = False, status_code: int = 200):
         return templates.TemplateResponse(
             request, "admin/item_form.html",
             {"title": item.title if item else f"New {kind}", "account": me,
              "kind": kind, "item": item, "item_title": title, "body": body,
-             "slug": slug, "error": error,
+             "slug": slug, "error": error, "saved": saved,
              "preview": render_markdown(body) if preview else None},
             status_code=status_code,
         )
@@ -94,7 +103,11 @@ def item_router(kind: Kind) -> APIRouter:
                      slug=item.slug, status_code=503,
                      error=OFFLINE_KEPT_AS_DRAFT if kept_as_draft else OFFLINE)
 
-    def _to_item(item_id: int) -> RedirectResponse:
+    def _to_item(request: Request, item_id: int,
+                 saved: str = "") -> RedirectResponse:
+        """Back to the item's page, which shows `saved` once (if given)."""
+        if saved:
+            request.session["saved"] = [kind, item_id, saved]
         return RedirectResponse(f"{base}/{item_id}", status_code=303)
 
     @router.get("")
@@ -126,14 +139,18 @@ def item_router(kind: Kind) -> APIRouter:
             item = content.create_item(request.app.state.db_path, kind,
                                        title.strip(), body, me)
             return _offline(request, me, item, kept_as_draft=True)
-        return _to_item(item.id)
+        return _to_item(request, item.id, _saved_message(action, None, status))
 
     @router.get("/{item_id}")
     def edit_item_form(request: Request, item_id: int,
                        me: Account = Depends(current_account)):
         item = _editable(request, me, item_id)
+        # Only this item's own message, so another tab's never shows here.
+        saved = ""
+        if request.session.get("saved", [None, None])[:2] == [kind, item.id]:
+            saved = request.session.pop("saved")[2]
         return _form(request, me, item=item, title=item.title, body=item.body,
-                     slug=item.slug)
+                     slug=item.slug, saved=saved)
 
     @router.post("/{item_id}", dependencies=[Depends(verify_csrf)])
     def update_item(request: Request, item_id: int,
@@ -165,7 +182,8 @@ def item_router(kind: Kind) -> APIRouter:
         if error:
             return _form(request, me, item=item, title=title, body=body,
                          slug=slug, error=error, status_code=status_code)
-        return _to_item(item.id)
+        return _to_item(request, item.id,
+                        _saved_message(action, item.status, status))
 
     @router.post("/{item_id}/unpublish", dependencies=[Depends(verify_csrf)])
     def unpublish_item(request: Request, item_id: int,
@@ -177,7 +195,8 @@ def item_router(kind: Kind) -> APIRouter:
                     source, item.id, Status.DRAFT), item.status)
             except publish.SiteUpdateFailed:
                 return _offline(request, me, item)
-        return _to_item(item.id)
+            return _to_item(request, item.id, "Unpublished: back to draft.")
+        return _to_item(request, item.id)
 
     @router.post("/{item_id}/delete", dependencies=[Depends(verify_csrf)])
     def delete_item(request: Request, item_id: int,
