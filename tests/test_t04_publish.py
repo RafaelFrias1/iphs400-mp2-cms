@@ -238,3 +238,33 @@ def test_cms_publish_renders_through_the_same_module(client_as, post_form, db_pa
     monkeypatch.setattr(settings, "SITE", tmp_path / "cli-site")
     assert main(["publish"]) == 0
     assert post_file(tmp_path / "cli-site", slug).exists()
+
+
+# --- the console's public preview at / ---------------------------------------
+
+def test_console_home_lists_published_posts_like_the_site(client_as, post_form,
+                                                          client):
+    c = client_as("editor")
+    slug = slug_of(c, publish_new(post_form, c, "Practice schedule"))
+    new_post(post_form, c, "Secret draft title")
+    home = client.get("/").text
+    assert "Nothing published yet" not in home
+    assert f'href="posts/{slug}.html"' in home
+    assert "Secret draft title" not in home
+    assert client.get("/index.html").text == home
+
+
+def test_console_serves_each_published_post_and_the_stylesheet(
+        client_as, post_form, client):
+    c = client_as("editor")
+    slug = slug_of(c, publish_new(post_form, c, "Practice schedule", "- Mon 3pm"))
+    page = client.get(f"/posts/{slug}.html")
+    assert page.status_code == 200 and "<li>Mon 3pm</li>" in page.text
+    assert client.get("/style.css").status_code == 200
+
+
+def test_console_does_not_serve_drafts(client_as, post_form, client):
+    c = client_as("editor")
+    slug = slug_of(c, new_post(post_form, c, "Secret draft title"))
+    assert client.get(f"/posts/{slug}.html").status_code == 404
+    assert client.get("/posts/no-such-post.html").status_code == 404

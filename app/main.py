@@ -1,19 +1,19 @@
 """The FastAPI application.
 
-The admin console lives under /admin and needs a login (/login); the public
-site answers at /. Routes live in their own modules under app/routes/ and are
-included here. Keep this file small.
+The admin console lives under /admin and needs a login (/login); a preview
+of the public site answers at /. Routes live in their own modules under
+app/routes/ and are included here. Keep this file small.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import db, publish, settings
-from app.routes import accounts, auth, console, posts
+from app import db, settings
+from app.routes import accounts, auth, console, posts, public
 from app.web import LoginRequired
 
 
@@ -34,16 +34,11 @@ def create_app(db_path: Path | None = None,
     def to_login(request: Request, exc: LoginRequired):
         return RedirectResponse("/login", status_code=303)
 
-    @app.get("/")
-    def public_home():
-        # The real public site is site/ (`cms publish`); this is a placeholder.
-        return HTMLResponse(publish.environment().get_template(
-            "public/home.html").render(title=settings.SITE_TITLE, posts=[]))
-
     app.include_router(auth.router)
     app.include_router(console.router)
     app.include_router(accounts.router)
     app.include_router(posts.router)
+    app.include_router(public.router)
     return app
 
 

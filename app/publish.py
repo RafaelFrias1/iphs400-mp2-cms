@@ -1,7 +1,8 @@
 """The site update: render published content into site/ as plain HTML.
 
 render_site() writes the home page (published posts, newest first) and one
-file per published post under posts/. update_site() is what the console runs
+file per published post under posts/. The console previews the same pages at
+/ through home_html() and post_html(), so it shows what readers will see. update_site() is what the console runs
 after any change to published content. `cms publish` calls render_site() from
 this module; T07 (ADR-004) adds the deploy to update_site() and decides how
 the CLI reaches it.
@@ -21,7 +22,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app import content, settings
-from app.content import Kind, Status
+from app.content import Item, Kind, Status
 from app.markdown import render_markdown
 
 CSS = """/* Minimal starter styles — make them yours. */
@@ -57,35 +58,40 @@ def environment() -> Environment:
     return env
 
 
-def render_site(out: Path | None = None, db_path: Path | None = None) -> Path:
-    """Rebuild `out` from scratch with every published post in `db_path`.
+def published_posts(db_path: Path) -> list[Item]:
+    """Newest first. A database that doesn't exist yet (a fresh clone) has none."""
+    if not db_path.exists():
+        return []
+    return content.list_items(db_path, Kind.POST, Status.PUBLISHED)
 
-    A database that doesn't exist yet (a fresh clone) renders an empty site.
-    """
+
+def home_html(posts: list[Item]) -> str:
+    """index.html: the published posts, newest first."""
+    return environment().get_template("public/home.html").render(
+        title=settings.SITE_TITLE, posts=posts, css_path="style.css",
+        home_path="index.html",
+    )
+
+
+def post_html(post: Item) -> str:
+    """posts/<slug>.html: one published post, its Markdown sanitized."""
+    return environment().get_template("public/post.html").render(
+        title=settings.SITE_TITLE, post=post, body=render_markdown(post.body),
+        css_path="../style.css", home_path="../index.html",
+    )
+
+
+def render_site(out: Path | None = None, db_path: Path | None = None) -> Path:
+    """Rebuild `out` from scratch with every published post in `db_path`."""
     out = out or settings.SITE
-    db_path = db_path or settings.DATABASE_PATH
-    posts = (content.list_items(db_path, Kind.POST, Status.PUBLISHED)
-             if db_path.exists() else [])
+    posts = published_posts(db_path or settings.DATABASE_PATH)
     if out.exists():
         shutil.rmtree(out)
     (out / "posts").mkdir(parents=True)
-    env = environment()
     (out / "style.css").write_text(CSS)
-    (out / "index.html").write_text(
-        env.get_template("public/home.html").render(
-            title=settings.SITE_TITLE, posts=posts, css_path="style.css",
-            home_path="index.html",
-        )
-    )
-    post_page = env.get_template("public/post.html")
+    (out / "index.html").write_text(home_html(posts))
     for post in posts:
-        (out / "posts" / f"{post.slug}.html").write_text(
-            post_page.render(
-                title=settings.SITE_TITLE, post=post,
-                body=render_markdown(post.body),
-                css_path="../style.css", home_path="../index.html",
-            )
-        )
+        (out / "posts" / f"{post.slug}.html").write_text(post_html(post))
     return out
 
 
