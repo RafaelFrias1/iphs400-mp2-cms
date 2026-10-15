@@ -21,7 +21,7 @@ The AI use statement in the README.md file shows the skills and prompts used. In
 
 The Matt Pocock skills came in super useful to catch inconsistencies and mistakes that I may not be as adept in catching as a novice developer. The AI questioning me on the documents provided allowed it to catch inconsistencies between the documents that would have presented problems when trying to implement the changes, and the code review caught mistakes I was able to question and change before committing, like the homepage saying "Nothing published yet" that the AI waved through.
 
-Additionally, I went to bed after the first session where I implemented tickets T01-T03, and used /handoff to ensure I could pick up where we left off the next morning and save tokens rather than having it reread the entire session again.
+Additionally, I went to bed after implementing tickets T01-T03 on the night of Oct 14, and used /handoff to ensure I could pick up where we left off the next morning and save tokens rather than having it reread the entire session again.
 
 ## 4. Token budget: plan vs. actual
 
@@ -29,7 +29,9 @@ Plan:
 Sonnet 5.5 for /implement, and about 20% of a 5-hour window per ticket with 9 total tickets. Eventually taking up 2 and a half 5 hour windows.
 
 Actual:
-7 tickets that used about 54% of a 5 hour window in total spread across sessions. When taking into account grill, setup, and handoffs, about 116% of a 5-hour window was used in the project spread across two main days (Oct 14 and 15). This came in well under the forecast despite using Opus 5.5 instead. Likely came in under plan since opus remained efficient.
+8 tickets. T01-T06 used about 41% of a 5 hour window, and T07 about 13%. The T07 row in the ledger shows 40%, but that is because the phase label stayed on T07 while I did the screenshots, README, report and a mock grade afterwards. When taking into account grill (3%), setup (10%), and unlabelled sessions (9%), about 103% of a 5-hour window was used in the project spread across two main days (Oct 14 and 15), and about 1.8% of the weekly cap per ticket. This came in well under the forecast despite using Opus 5.5 instead. Likely came in under plan since opus remained efficient.
+
+My first numbers were higher (116%) because the template's own sessions had been mixed into my ledger. The mock grade caught it, and I moved those rows out.
 
 ## 5. Future improvements
 
