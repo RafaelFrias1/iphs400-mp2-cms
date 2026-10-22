@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Settings</h1>
+  {% if error %}<p role="alert"><strong>{{ error }}</strong></p>{% endif %}
+  {% if saved %}<p role="status">{{ saved }}</p>{% endif %}
+
+  <form method="post" action="{{ root(request) }}admin/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <fieldset>
+      <legend>Theme of the public site</legend>
+      {% for t in themes %}
+      <p><label><input type="radio" name="theme" value="{{ t }}"{% if t == chosen %} checked{% endif %}> {{ t }}</label></p>
+      {% endfor %}
+    </fieldset>
+    <p><button type="submit">Save and update the website</button></p>
+  </form>
+{% endblock %}
