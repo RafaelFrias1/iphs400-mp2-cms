@@ -12,6 +12,14 @@ _Avoid_: user (for the login), member
 The head coach. Holds the **admin** role, owns all pages and qualifying results, and manages accounts.
 _Avoid_: owner, superuser
 
+**Failed login**:
+A login attempt with a wrong password, or for an email that has no account or a deactivated one. Every failed login counts against the email that was typed.
+_Avoid_: bad login, invalid attempt
+
+**Lockout**:
+The 15 minutes during which an email that has had 5 failed logins is refused, even with the right password. A successful login before the lockout clears the count; the lockout ends on its own.
+_Avoid_: ban, block, suspension
+
 **Captain**:
 The player who is team captain this season, with their own account. Holds the **editor** role and posts the weekly practice schedule.
 
@@ -92,8 +100,24 @@ _Avoid_: publish (for this step), sync, push
 The part of a site update that sends the rebuilt site to the web host (GitHub Pages). If it fails (no wifi), the site update fails and the change is not saved.
 _Avoid_: publisher, uploader
 
+**Theme**:
+The public site's look: one stylesheet, chosen by the Coach. There are two, **classic** (the original look, following the phone's light or dark setting) and **kenyon** (light, with Kenyon purple). Changing the theme is a site update.
+_Avoid_: skin, template, style
+
+**Settings page**:
+The admin-only console screen where the Coach chooses the site-wide options, starting with the theme. Editors neither see its link nor can open it.
+_Avoid_: preferences, config, options page
+
 ## Places
 
 **Team laptop**:
 The single machine the admin console runs on. All posting happens here; nobody posts from a phone.
 _Avoid_: server, backend
+
+## Decisions
+
+| Question | Choice | Why |
+|---|---|---|
+| What does the login limiter count by? | The typed email, including emails with no account, not the IP address | All posting happens on one team laptop, so an IP limit would lock out the Coach whenever someone else on it mistyped; and counting unknown emails too means the 429 can't tell anyone which emails have accounts (checklist #2). |
+| Where are failed logins remembered? | In the server's memory; a restart clears them | The console runs as one process on the one team laptop, so a single in-memory count sees every login attempt; a table would mean a schema change and an rm cms.db reseed on that laptop, and losing the count on restart only helps someone who can already restart the laptop. |
+| When does a new theme reach the public site? | Immediately, as a site update; no wifi means the change is refused | The Coach doesn't want to learn new software mid-season; if he picks a theme and the public site doesn't change until someone next publishes a post, he'll think it's broken. Same rule as ADR-004: a change is live or it isn't saved. |
