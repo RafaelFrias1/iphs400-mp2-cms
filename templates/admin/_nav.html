@@ -6,6 +6,7 @@
   {% if account.is_admin %}
   <li><a href="{{ root(request) }}admin/pages/new">New page</a></li>
   <li><a href="{{ root(request) }}admin/accounts">Accounts</a></li>
+  <li><a href="{{ root(request) }}admin/settings">Settings</a></li>
   {% endif %}
   <li><form method="post" action="{{ root(request) }}logout">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">

@@ -10,7 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
-from app import publish
+from app import publish, theme
 from app.content import Kind
 
 router = APIRouter()
@@ -46,5 +46,6 @@ def _public_item(request: Request, kind: Kind, slug: str) -> HTMLResponse:
 
 
 @router.get("/style.css")
-def public_css():
-    return Response(publish.CSS, media_type="text/css")
+def public_css(request: Request):
+    """The selected theme, as site/style.css will carry it."""
+    return Response(theme.css(request.app.state.db_path), media_type="text/css")

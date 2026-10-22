@@ -52,3 +52,6 @@ DEPLOY = os.environ.get("CMS_DEPLOY", "").lower() == "on"
 # Set this to your Pages URL once you deploy, e.g.
 # https://yourname.github.io/iphs400-mp2-cms/
 BASE_PATH = os.environ.get("CMS_BASE_PATH", "")
+# The public site's theme until the Coach picks one on the Settings page
+# (a folder under app/themes/; app/theme.py).
+THEME = os.environ.get("CMS_THEME", "classic")

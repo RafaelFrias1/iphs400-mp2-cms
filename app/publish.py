@@ -1,8 +1,9 @@
 """The site update: render published content into site/ as plain HTML.
 
-render_site() writes the home page (the Travel Lineup page if published, then
-published posts newest first), one file per published post under posts/ and
-one per published page under pages/. Every page carries a nav built from the
+render_site() writes the selected theme's CSS as style.css (app/theme.py),
+the home page (the Travel Lineup page if published, then published posts
+newest first), one file per published post under posts/ and one per
+published page under pages/. Every page carries a nav built from the
 published pages. The console previews the same pages at / through home_html()
 and item_html(), so it shows what readers will see.
 
@@ -28,31 +29,10 @@ from typing import TypeVar
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app import content, db, settings
+from app import content, db, settings, theme
 from app.content import Item, Kind, Status
 from app.deploy import Deployer, DeployFailed
 from app.markdown import render_markdown
-
-CSS = """/* Phones first: one column, nothing wider than the screen. */
-:root { color-scheme: light dark; }
-body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 42rem;
-       padding: 1rem; overflow-wrap: anywhere; }
-header a { font-weight: 700; text-decoration: none; }
-header .console { float: right; font-weight: 400; }
-nav ul { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; list-style: none;
-         margin: 0.5rem 0 0; padding: 0; }
-main { margin-block: 2rem; }
-img, table, pre { max-width: 100%; }
-/* Wide tables and code scroll in their own box, not the page. */
-table, pre { display: block; overflow-x: auto; }
-.byline { color: GrayText; font-size: 0.9rem; }
-.lineup { border-bottom: 1px solid GrayText; margin-bottom: 1.5rem; }
-/* The console shares this file: form fields never run off a phone. */
-textarea, input, select { max-width: 100%; box-sizing: border-box; }
-textarea { width: 100%; }
-nav form { display: inline; }
-[role="status"] { border-left: 4px solid GrayText; padding-left: 0.5rem; }
-"""
 
 TRAVEL_LINEUP = "travel-lineup"
 
@@ -132,7 +112,7 @@ def render_site(out: Path | None = None,
         shutil.rmtree(out)
     for kind in Kind:
         (out / f"{kind}s").mkdir(parents=True)
-    (out / "style.css").write_text(CSS)
+    (out / "style.css").write_text(theme.css(source))
     (out / "index.html").write_text(home_html(pages, posts))
     for item in pages + posts:
         (out / f"{item.kind}s" / f"{item.slug}.html").write_text(
@@ -145,6 +125,11 @@ T = TypeVar("T")
 
 class SiteUpdateFailed(Exception):
     """The site update failed, so the change it was for was rolled back."""
+
+
+# What the console says when a SiteUpdateFailed stopped a change.
+OFFLINE = ("Website not updated, so this change was not saved. "
+           "Try again when you're online.")
 
 
 def update_site(db_path: Path, out: Path, deploy: Deployer,

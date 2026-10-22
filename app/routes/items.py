@@ -30,14 +30,13 @@ from app import content, db, publish
 from app.accounts import Account
 from app.content import Item, Kind, Status
 from app.markdown import render_markdown
+from app.publish import OFFLINE
 from app.routes.console import content_list
 from app.web import current_account, require_admin, templates, verify_csrf
 
 
 T = TypeVar("T")
 
-OFFLINE = ("Website not updated, so this change was not saved. "
-           "Try again when you're online.")
 OFFLINE_KEPT_AS_DRAFT = ("Website not updated, so this was saved as a draft. "
                          "Publish it again when you're online.")
 
