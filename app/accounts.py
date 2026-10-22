@@ -47,7 +47,7 @@ def _from_row(row) -> Account:
                    active=bool(row["active"]))
 
 
-def _normalize(email: str) -> str:
+def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
@@ -56,7 +56,7 @@ def create_account(db_path: Path, email: str, password: str, role: Role) -> Acco
         with db.connect(db_path) as conn:
             cursor = conn.execute(
                 "INSERT INTO accounts (email, password_hash, role) VALUES (?, ?, ?)",
-                (_normalize(email), _hasher.hash(password), role),
+                (normalize_email(email), _hasher.hash(password), role),
             )
     except sqlite3.IntegrityError as exc:
         raise EmailTaken(email) from exc
@@ -79,7 +79,7 @@ def get_account(db_path: Path, account_id: int) -> Account | None:
 def _row_by_email(db_path: Path, email: str):
     with db.connect(db_path) as conn:
         return conn.execute("SELECT * FROM accounts WHERE email = ?",
-                            (_normalize(email),)).fetchone()
+                            (normalize_email(email),)).fetchone()
 
 
 def find_by_email(db_path: Path, email: str) -> Account | None:

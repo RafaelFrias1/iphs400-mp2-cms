@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from pathlib import Path
 
 # Before any app import: settings must not read the developer's own .env
@@ -25,6 +26,7 @@ from fastapi.testclient import TestClient
 
 from app.accounts import Role
 from app.deploy import DeployFailed
+from app.login_limiter import limiter
 from app.main import create_app
 from app.seed import DEMO_EMAILS, seed_demo
 
@@ -167,3 +169,10 @@ def new_account(client_as, post_form):
         assert response.status_code == 303, response.text
 
     return _create
+
+
+@pytest.fixture(autouse=True)
+def reset_limiter():
+    """Every test starts with no failed logins counted and the real clock (ADR-006)."""
+    limiter.reset()
+    limiter.clock = time.monotonic
