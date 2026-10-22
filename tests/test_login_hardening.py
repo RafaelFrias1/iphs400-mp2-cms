@@ -25,6 +25,14 @@ def alert(response) -> str:
     return re.sub(r"<[^>]+>", "", match.group(1)).strip()
 
 
+class FrozenClock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
 def test_wrong_password_and_unknown_email_get_the_same_response(client, csrf):
     wrong_password = login(client, csrf, DEMO_ACCOUNTS["admin"]["email"], "nope")
     unknown_email = login(client, csrf, "nobody@example.test", "nope")
@@ -34,6 +42,7 @@ def test_wrong_password_and_unknown_email_get_the_same_response(client, csrf):
 
 
 def test_sixth_attempt_for_an_email_is_refused_even_with_the_right_password(client, csrf):
+    limiter.clock = FrozenClock()
     email = DEMO_ACCOUNTS["editor"]["email"]
     for _ in range(5):
         assert login(client, csrf, email, "nope").status_code == 401
@@ -43,14 +52,6 @@ def test_sixth_attempt_for_an_email_is_refused_even_with_the_right_password(clie
     assert refused.status_code == 429
     assert alert(refused) == "Too many failed logins. Try again in 15 minutes."
     assert client.get("/admin", follow_redirects=False).status_code == 303
-
-
-class FrozenClock:
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
 
 
 def test_login_works_again_once_15_minutes_have_passed(client, csrf):
