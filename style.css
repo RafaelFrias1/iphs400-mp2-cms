@@ -1,14 +1,28 @@
-/* Phones first: one column, nothing wider than the screen. */
-:root { color-scheme: light dark; }
+/* Kenyon: light only, a purple header bar and links, serif headings.
+   Same phone-first layout as classic: nothing wider than the screen. */
+:root { color-scheme: light; --kenyon-purple: #4f2683; --ink: #1d1a22;
+        --muted: #5f5868; }
 body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 42rem;
-       padding: 1rem; overflow-wrap: anywhere; }
-header a { font-weight: 700; text-decoration: none; }
+       padding: 1rem; overflow-wrap: anywhere; background: #fff; color: var(--ink); }
+h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.25;
+             color: var(--kenyon-purple); }
+a { color: var(--kenyon-purple); }
+header { background: var(--kenyon-purple); color: #fff; padding: 0.75rem 1rem;
+         border-radius: 4px; }
+header a { color: #fff; font-weight: 700; text-decoration: none; }
 header .console { float: right; font-weight: 400; }
+header nav a { font-weight: 400; text-decoration: underline; }
 nav ul { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; list-style: none;
          margin: 0.5rem 0 0; padding: 0; }
 main { margin-block: 2rem; }
 img, table, pre { max-width: 100%; }
 /* Wide tables and code scroll in their own box, not the page. */
 table, pre { display: block; overflow-x: auto; }
-.byline { color: GrayText; font-size: 0.9rem; }
-.lineup { border-bottom: 1px solid GrayText; margin-bottom: 1.5rem; }
+.byline { color: var(--muted); font-size: 0.9rem; }
+.lineup { border-bottom: 2px solid var(--kenyon-purple); margin-bottom: 1.5rem; }
+footer { color: var(--muted); }
+/* The console shares this file: form fields never run off a phone. */
+textarea, input, select { max-width: 100%; box-sizing: border-box; }
+textarea { width: 100%; }
+nav form { display: inline; }
+[role="status"] { border-left: 4px solid var(--kenyon-purple); padding-left: 0.5rem; }
